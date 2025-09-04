@@ -47,10 +47,10 @@ class RobotController:
         """
         Robot_Convertion = SpeedConverter(400,61) #"Nb pas du moteur, diamètre roue d'entrainement"
         if speed_kmh > 0:
-            NbPasParSecondePourKM_H = Robot_Convertion.convert_kmh_to_steps_per_sec(speed_kmh)
-            print("NbPasParSecondePourKM_H pour 6 km/H", NbPasParSecondePourKM_H)
+            NbPasParSecondePourKM_H = int(Robot_Convertion.convert_kmh_to_steps_per_sec(speed_kmh))
+            print("NbPasParSecondePourKM_H pour ", speed_kmh," km/H ", NbPasParSecondePourKM_H)
             intervale = 1 / NbPasParSecondePourKM_H
-            print("Inervale en seconde = ", intervale)
+            print(f"Intervale en seconde = {intervale:.9f}")
             return intervale
             #return 0.05 / speed_kmh
             

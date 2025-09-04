@@ -25,7 +25,7 @@ def main():
         # Exemples d'utilisation
         
         # Avancer de 50 cm à 0.5 km/h
-        robot.move('avant', speed_kmh=3, distance_cm=595)
+        robot.move('avant', speed_kmh=6, distance_cm=95)
         time.sleep(2)
 
         # Reculer de 50 cm à 0.2 km/h

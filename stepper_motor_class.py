@@ -55,7 +55,7 @@ class StepperMotor:
         current_delay = self.DELAY * 10
         acceleration = 0.00001
         min_delay = self.DELAY /10
-        print("min_delay", min_delay)
+        print(f"min_delay {min_delay:.6f}")
         half_steps = steps / 2
         
         print(f"Déplacement de {steps} pas avec accélération et décélération...")
@@ -68,7 +68,7 @@ class StepperMotor:
             # Phase de décélération
             elif i >= half_steps and current_delay < self.DELAY * 5:
                 current_delay += acceleration / 20
-                print("current_delay", current_delay)
+                #print(f"current_delay {current_delay:.9f}")
             # S'assurer que le délai ne descend pas en dessous du minimum
             if current_delay < min_delay:
                 current_delay = min_delay
