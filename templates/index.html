@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle GPIO</title>
+    <style>
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            height: 20vh;
+        }
+        .button-grid button {
+            width: 100px;
+            height: 100px;
+            font-size: 16px;
+        }
+        .button-grid #up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        .button-grid #stop {
+            grid-column: 2;
+            grid-row: 2;
+        }
+        .button-grid #down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        .button-grid #left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        .button-grid #right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+    </style>
+</head>
+<body>
+    <h2> COMMANDE GPIO</h2>
+    <div class="button-grid">
+        <button id="up">Avance</button>
+        <button id="stop">Stop</button>
+        <button id="down">Recule</button>
+        <button id="left">Gauche</button>
+        <button id="right">Droite</button>
+    </div>
+    
+    <h2> COMMANDE VITESSE</h2>
+    <label for="kmhSlider">Vitesse (KM/H):</label>
+    <input type="range" id="kmhSlider" min="0" max="10" value="5">
+    <p>Vitesse actuelle: <span id="kmhValue">5</span> km/h</p>
+
+    <h2> COMMANDE DISTANCE</h2>
+    <label for="distanceSlider">Distance (CM):</label>
+    <input type="range" id="distanceSlider" min="0" max="500" value="100">
+    <p>Distance actuelle: <span id="distanceValue">100</span> cm</p>
+    
+    <script>
+        // Événements pour les boutons de direction "Gauche" et "Droite" et "Stop"
+        // Ces boutons utilisent l'état (HIGH/LOW) pour indiquer la pression du bouton.
+        document.getElementById('left').addEventListener('mousedown', () => sendGPIOCommand('left', 'HIGH'));
+        document.getElementById('left').addEventListener('mouseup', () => sendGPIOCommand('left', 'LOW'));
+        document.getElementById('left').addEventListener('touchstart', () => sendGPIOCommand('left', 'HIGH'));
+        document.getElementById('left').addEventListener('touchend', () => sendGPIOCommand('left', 'LOW'));
+
+        document.getElementById('right').addEventListener('mousedown', () => sendGPIOCommand('right', 'HIGH'));
+        document.getElementById('right').addEventListener('mouseup', () => sendGPIOCommand('right', 'LOW'));
+        document.getElementById('right').addEventListener('touchstart', () => sendGPIOCommand('right', 'HIGH'));
+        document.getElementById('right').addEventListener('touchend', () => sendGPIOCommand('right', 'LOW'));
+
+        document.getElementById('stop').addEventListener('mousedown', () => sendGPIOCommand('stop', 'HIGH'));
+        document.getElementById('stop').addEventListener('mouseup', () => sendGPIOCommand('stop', 'LOW'));
+        document.getElementById('stop').addEventListener('touchstart', () => sendGPIOCommand('stop', 'HIGH'));
+        document.getElementById('stop').addEventListener('touchend', () => sendGPIOCommand('stop', 'LOW'));
+        
+        // Événements pour les boutons "Avance" et "Recule"
+        // Le script Python ne nécessite pas d'état (HIGH/LOW) pour ces actions.
+        document.getElementById('up').addEventListener('click', () => sendGPIOCommand('up'));
+        document.getElementById('down').addEventListener('click', () => sendGPIOCommand('down'));
+        
+        // Fonction générique pour envoyer les commandes au serveur
+        function sendGPIOCommand(direction, state = null) {
+            let url = `/${direction}`;
+            if (state) {
+                url += `?state=${state}`;
+            }
+            fetch(url)
+                .then(response => response.text())
+                .then(data => console.log(data))
+                .catch(error => console.error('Error:', error));
+        }
+        
+        // Contrôle de la vitesse en KM/H
+        const kmhSlider = document.getElementById('kmhSlider');
+        const kmhValue = document.getElementById('kmhValue');
+
+        kmhSlider.oninput = function() {
+            kmhValue.textContent = this.value;
+            console.log(`Vitesse KM/H: ${this.value}`);
+            fetch(`/set_kmh?value=${this.value}`)
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error('Erreur:', error));
+        }
+
+        // Contrôle de la distance en CM
+        const distanceSlider = document.getElementById('distanceSlider');
+        const distanceValue = document.getElementById('distanceValue');
+        
+        distanceSlider.oninput = function() {
+            distanceValue.textContent = this.value;
+            console.log(`Distance CM: ${this.value}`);
+            fetch(`/set_distance?value=${this.value}`)
+                .then(response => response.json())
+                .then(data => console.log(data))
+                .catch(error => console.error('Erreur:', error));
+        }
+    </script>
+</body>
+</html>
