@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import RPi.GPIO as GPIO
 import time
+import threading
 
 class StepperMotor:
     """
@@ -31,54 +32,54 @@ class StepperMotor:
         GPIO.setup(self.DIR_PIN, GPIO.OUT)
         GPIO.setup(self.STEP_PIN, GPIO.OUT)
         GPIO.setup(self.EN_PIN, GPIO.OUT)
-        
-        # Le driver TB6600 est activé par un signal LOW
+
+        # Désactiver le moteur par défaut
+        GPIO.output(self.EN_PIN, GPIO.HIGH)
+
+    def enable(self):
+        """Active le moteur."""
         GPIO.output(self.EN_PIN, GPIO.LOW)
-        print("Driver du moteur activé.")
+
+    def disable(self):
+        """Désactive le moteur."""
+        GPIO.output(self.EN_PIN, GPIO.HIGH)
+        print("Moteur désactivé.")
 
     def set_direction(self, direction):
-        """Définit la direction du moteur (True pour une direction, False pour l'autre)."""
+        """
+        Définit la direction de rotation.
+        
+        Args:
+            direction (bool): True pour un sens, False pour l'autre.
+        """
         GPIO.output(self.DIR_PIN, direction)
 
     def move_steps(self, steps, direction):
         """
-        Fait avancer le moteur d'un certain nombre de pas.
+        Fait avancer le moteur d'un nombre de pas spécifié.
 
         Args:
             steps (int): Le nombre de pas à effectuer.
             direction (bool): Le sens de rotation (True ou False).
         """
         self.set_direction(direction)
-        time.sleep(0.05) # Petite pause pour s'assurer que le driver a changé de direction
-
-        # Démarrer avec un délai élevé (vitesse lente)
-        current_delay = self.DELAY * 10
-        acceleration = 0.00001
-        min_delay = self.DELAY /10
-        print(f"min_delay {min_delay:.6f}")
-        half_steps = steps / 2
+        self.enable()
         
-        print(f"Déplacement de {steps} pas avec accélération et décélération...")
-        #for _ in range(steps):
-        for i in range(steps):
-             # Phase d'accélération
-            if i < half_steps and current_delay > min_delay:
-                current_delay -= acceleration
-                #print("current_delay", current_delay)
-            # Phase de décélération
-            elif i >= half_steps and current_delay < self.DELAY * 5:
-                current_delay += acceleration / 20
-                #print(f"current_delay {current_delay:.9f}")
-            # S'assurer que le délai ne descend pas en dessous du minimum
-            if current_delay < min_delay:
-                current_delay = min_delay
-
+        for _ in range(int(steps)):
             GPIO.output(self.STEP_PIN, GPIO.HIGH)
-            #time.sleep(self.DELAY)
-            time.sleep(current_delay)
+            time.sleep(self.DELAY)
             GPIO.output(self.STEP_PIN, GPIO.LOW)
-            #time.sleep(self.DELAY)
-            time.sleep(current_delay)
+            time.sleep(self.DELAY)
+
+        self.disable()
+
+    def step(self, direction):
+        """Fait un seul pas dans la direction spécifiée."""
+        self.set_direction(direction)
+        GPIO.output(self.STEP_PIN, GPIO.HIGH)
+        time.sleep(self.DELAY)
+        GPIO.output(self.STEP_PIN, GPIO.LOW)
+        time.sleep(self.DELAY)
 
     def rotate_degrees(self, degrees, direction):
         """
@@ -101,9 +102,28 @@ class StepperMotor:
             delay_sec (float): Le nouveau délai en secondes. Plus la valeur est petite, plus le moteur tourne vite.
         """
         self.DELAY = delay_sec
-        print(f"Vitesse mise à jour. Nouveau délai: {self.DELAY:.9f}s")    
+        print(f"Vitesse mise à jour. Nouveau délai: {self.DELAY:.6f} secondes")
+
+    def move_continuously(self, direction, stop_event, pause_event):
+        """
+        Fait tourner le moteur en continu jusqu'à ce qu'un événement d'arrêt soit déclenché.
+
+        Args:
+            direction (bool): La direction de la rotation (True ou False).
+            stop_event (threading.Event): Événement pour arrêter le mouvement.
+            pause_event (threading.Event): Événement pour mettre en pause le mouvement.
+        """
+        self.set_direction(direction)
+        self.enable()
         
-    def disable_driver(self):
-        """Désactive le driver pour couper l'alimentation du moteur."""
-        GPIO.output(self.EN_PIN, GPIO.HIGH)
-        print("Driver désactivé.")
+        while not stop_event.is_set():
+            if not pause_event.is_set():
+                GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                time.sleep(self.DELAY)
+                GPIO.output(self.STEP_PIN, GPIO.LOW)
+                time.sleep(self.DELAY)
+            else:
+                # Si en pause, attendre un peu avant de vérifier à nouveau
+                time.sleep(0.1)
+        
+        self.disable()

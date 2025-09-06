@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import math
 
 class SpeedConverter:
@@ -31,6 +32,7 @@ class SpeedConverter:
             speed_kmh = 0
             
         # 1. Calculer la circonférence de la roue en cm
+        # Divise par 10 pour convertir mm en cm
         wheel_diameter_cm = self.wheel_diameter_mm / 10
         wheel_circumference_cm = math.pi * wheel_diameter_cm
         
@@ -48,7 +50,9 @@ class SpeedConverter:
 
 # Exemple d'utilisation de la classe
 if __name__ == "__main__":
-    # Spécifications : 400 pas par tour, roue de 61 mm de diamètre
+    # Spécifications du robot :
+    # Moteur avec 400 pas par tour (full step)
+    # Roue de 61 mm de diamètre
     steps_per_revolution = 400
     wheel_diameter = 61.0
     
@@ -56,10 +60,15 @@ if __name__ == "__main__":
     
     # Tester une vitesse de 0.5 km/h
     test_speed_kmh = 0.5
-    steps = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
-    print(f"Pour une vitesse de {test_speed_kmh} km/h, il faut {steps:.2f} pas par seconde.")
-    
-    # Tester une vitesse de 1.0 km/h
-    test_speed_kmh = 1.0
-    steps = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
-    print(f"Pour une vitesse de {test_speed_kmh} km/h, il faut {steps:.2f} pas par seconde.")
+    steps_per_second = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
+    print(f"Pour une vitesse de {test_speed_kmh} km/h, le moteur doit tourner à {steps_per_second:.2f} pas/seconde.")
+
+    # Tester une vitesse de 5 km/h
+    test_speed_kmh = 5.0
+    steps_per_second = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
+    print(f"Pour une vitesse de {test_speed_kmh} km/h, le moteur doit tourner à {steps_per_second:.2f} pas/seconde.")
+
+    # Tester une vitesse de 10 km/h
+    test_speed_kmh = 10.0
+    steps_per_second = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
+    print(f"Pour une vitesse de {test_speed_kmh} km/h, le moteur doit tourner à {steps_per_second:.2f} pas/seconde.")

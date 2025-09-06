@@ -1,14 +1,23 @@
 # -*- coding: utf-8 -*-
 import RPi.GPIO as GPIO
 import time
+import threading
 from stepper_motor_class import StepperMotor
 from SpeedConverter import SpeedConverter
-import threading
 
 class RobotController:
     """
     Classe pour contrôler le mouvement d'un robot avec deux moteurs pas à pas.
     """
+    # Constantes physiques du robot
+    WHEELBASE_CM = 15.0  # Empattement du robot en cm (distance entre les roues)
+    STEPS_PER_CM = 21    # Nombre de pas requis pour déplacer le robot d'un centimètre.
+                         # C'est une valeur à calibrer en fonction de la taille des roues et de la configuration du micro-pas.
+    
+    # Constantes pour la vitesse de base et la vitesse maximale
+    MAX_SPEED_KMH = 10.0 # Vitesse maximale en km/h
+    
+    # Initialisation de la classe avec les broches des moteurs
     def __init__(self, motor_gauche_pins, motor_droit_pins, steps_per_cm=21):
         """
         Initialise les deux moteurs du robot.
@@ -17,8 +26,14 @@ class RobotController:
             motor_gauche_pins (dict): Dictionnaire des broches pour le moteur gauche (dir_pin, step_pin, en_pin).
             motor_droit_pins (dict): Dictionnaire des broches pour le moteur droit (dir_pin, step_pin, en_pin).
             steps_per_cm (int): Nombre de pas requis pour déplacer le robot d'un centimètre.
-                                 Cela dépend de la taille des roues et de la configuration du micro-pas.
         """
+        # S'assurer que les deux moteurs partagent la même broche d'activation pour un contrôle synchronisé
+        if motor_gauche_pins['en_pin'] != motor_droit_pins['en_pin']:
+            print("AVERTISSEMENT: Les moteurs devraient partager une seule broche d'activation (en_pin).")
+
+        self.STEPS_PER_CM = steps_per_cm
+        
+        # Création des instances des moteurs pas à pas
         self.motor_gauche = StepperMotor(
             dir_pin=motor_gauche_pins['dir_pin'],
             step_pin=motor_gauche_pins['step_pin'],
@@ -29,182 +44,204 @@ class RobotController:
             step_pin=motor_droit_pins['step_pin'],
             en_pin=motor_droit_pins['en_pin']
         )
-        self.STEPS_PER_CM = steps_per_cm
-        # Distance entre les roues du robot en cm
-        self.WHEELBASE_CM = 50
 
+        # Création d'un convertisseur de vitesse (à adapter aux spécifications des roues et des pas)
+        # Par défaut, 400 pas par tour et un diamètre de roue de 61 mm
+        self.speed_converter = SpeedConverter(
+            steps_per_rev=400,
+            wheel_diameter_mm=61.0
+        )
         
-        
+        # Événements de contrôle pour les threads
+        self.stop_event = threading.Event()
+        self.pause_event = threading.Event()
+        self.motor_threads = []
+
     def _calculate_delay(self, speed_kmh):
         """
-        Calcule le délai en secondes entre les pas en fonction de la vitesse en km/h.
+        Calcule le délai entre les pas en fonction de la vitesse en km/h.
         
         Args:
-            speed_kmh (float): Vitesse désirée en km/h.
+            speed_kmh (float): Vitesse en kilomètres par heure (km/h).
             
         Returns:
-            float: Le délai en secondes.
+            float: Le délai en secondes entre les pas.
         """
-        Robot_Convertion = SpeedConverter(400,61) #"Nb pas du moteur, diamètre roue d'entrainement"
-        if speed_kmh > 0:
-            NbPasParSecondePourKM_H = int(Robot_Convertion.convert_kmh_to_steps_per_sec(speed_kmh))
-            print("NbPasParSecondePourKM_H pour ", speed_kmh," km/H ", NbPasParSecondePourKM_H)
-            intervale = 1 / NbPasParSecondePourKM_H
-            print(f"Intervale en seconde = {intervale:.9f}")
-            return intervale
-            #return 0.05 / speed_kmh
-            
-        else:
-            return float('inf')        
-
-    def _move_motor_steps(self, motor, steps, direction):
-        """Fonction interne pour déplacer un seul moteur sur un thread."""
-        motor.move_steps(steps, direction)
+        # Utilise la classe SpeedConverter pour obtenir les pas par seconde
+        steps_per_sec = self.speed_converter.convert_kmh_to_steps_per_sec(speed_kmh)
         
-    def move(self, direction, speed_kmh, distance_cm):
+        if steps_per_sec > 0:
+            delay = 1.0 / (2 * steps_per_sec)
+        else:
+            delay = 0  # Délai infini pour l'arrêt
+            
+        return delay
+
+    def _get_direction_booleans(self, direction):
         """
-        Déplace le robot en ligne droite.
+        Convertit une direction textuelle en booléens pour les broches DIR des moteurs.
+        'avant' -> (True, True)
+        'arriere' -> (False, False)
+        'gauche' (rotation) -> (False, True)
+        'droite' (rotation) -> (True, False)
+        """
+        if direction == 'avant':
+            return (True, True)
+        elif direction == 'arriere':
+            return (False, False)
+        elif direction == 'gauche':
+            return (False, True)
+        elif direction == 'droite':
+            return (True, False)
+        else:
+            return (False, False)
+
+    def _run_motor(self, motor, steps_to_move, direction, delay_sec):
+        """
+        Fonction cible pour le thread de contrôle d'un moteur.
+        Gère la pause et l'arrêt.
+        """
+        motor.enable()
+        motor.set_direction(direction)
+        
+        for i in range(steps_to_move):
+            # Vérifie si le robot doit s'arrêter
+            if self.stop_event.is_set():
+                break
+            
+            # Attendre si le robot est en pause
+            while self.pause_event.is_set():
+                time.sleep(0.1)
+                if self.stop_event.is_set():
+                    break
+            
+            # Exécution du pas
+            motor.step(delay_sec)
+
+        motor.disable()
+        print(f"Moteur {motor.STEP_PIN} a terminé ses pas.")
+
+    def move(self, direction, speed_kmh, angle_deg):
+        """
+        Déplace le robot en ligne droite ou avec un rayon de braquage.
 
         Args:
             direction (str): 'avant' ou 'arriere'.
             speed_kmh (float): Vitesse en km/h.
-            distance_cm (float): Distance en cm.
+            angle_deg (float): Angle de braquage en degrés. Positif pour la droite, négatif pour la gauche.
+                                Si 0, le robot se déplace en ligne droite.
         """
-        print("Déplace le robot en ligne droite")
-        delay = self._calculate_delay(speed_kmh)
-        self.motor_gauche.set_speed(delay)
-        self.motor_droit.set_speed(delay)
+        print(f"Déplacement : direction={direction}, vitesse={speed_kmh} KM/H, angle={angle_deg}°")
         
-        steps_to_move = int(distance_cm * self.STEPS_PER_CM)
+        self.stop() # Arrête les mouvements précédents avant d'en démarrer un nouveau
+        self.stop_event.clear()
+        self.pause_event.clear()
         
-        dir_gauche = (direction == 'avant')
-        dir_droit = (direction == 'avant')
+        # Calcul des vitesses individuelles des roues en fonction de l'angle
+        # Ceci est une approximation simplifiée
+        angle_ratio = abs(angle_deg) / 10.0 # Normaliser l'angle (max 10°)
+        
+        if angle_deg > 0: # Virage à droite
+            speed_gauche = speed_kmh
+            speed_droit = speed_kmh * (1 - angle_ratio)
+        elif angle_deg < 0: # Virage à gauche
+            speed_gauche = speed_kmh * (1 - angle_ratio)
+            speed_droit = speed_kmh
+        else: # Ligne droite
+            speed_gauche = speed_kmh
+            speed_droit = speed_kmh
 
-        # Déplace les deux moteurs en parallèle sur des threads
-        thread_gauche = threading.Thread(target=self._move_motor_steps, args=(self.motor_gauche, steps_to_move, dir_gauche))
-        thread_droit = threading.Thread(target=self._move_motor_steps, args=(self.motor_droit, steps_to_move, dir_droit))
+        # S'assurer que les vitesses ne sont pas négatives
+        speed_gauche = max(0, speed_gauche)
+        speed_droit = max(0, speed_droit)
+
+        delay_gauche = self._calculate_delay(speed_gauche)
+        delay_droit = self._calculate_delay(speed_droit)
+
+        # Définition des directions de déplacement
+        dir_gauche, dir_droit = self._get_direction_booleans(direction)
+
+        # Les mouvements des roues sont continus jusqu'à l'envoi d'un nouvel ordre.
+        # On définit un nombre de pas arbitrairement grand pour simuler un mouvement continu.
+        steps_to_move_gauche = 1000000 
+        steps_to_move_droit = 1000000
+
+        # Création et lancement des threads pour les moteurs
+        thread_gauche = threading.Thread(target=self._run_motor, args=(self.motor_gauche, steps_to_move_gauche, dir_gauche, delay_gauche))
+        thread_droit = threading.Thread(target=self._run_motor, args=(self.motor_droit, steps_to_move_droit, dir_droit, delay_droit))
+
+        self.motor_threads = [thread_gauche, thread_droit]
         
-        print(f"Déplacement du robot de {distance_cm} cm à {speed_kmh} km/h en {direction}.")
         thread_gauche.start()
         thread_droit.start()
-        
-        thread_gauche.join()
-        thread_droit.join()
 
-    def turn(self, direction, speed_kmh, rayon_cm, angle_deg):
+    def turn(self, direction, speed_kmh, angle_deg):
         """
-        Fait tourner le robot sur place ou en arc de cercle.
-
+        Effectue une rotation sur place.
+        
         Args:
             direction (str): 'gauche' ou 'droite'.
-            speed_kmh (float): Vitesse en km/h.
-            rayon_cm (float): Rayon du virage en cm.
+            speed_kmh (float): Vitesse de rotation en km/h.
             angle_deg (float): Angle de rotation en degrés.
         """
-        if rayon_cm < 100 or rayon_cm > 500:
-            print("Le rayon de virage doit être entre 100 cm et 500 cm.")
-            return
+        print(f"Rotation sur place : direction={direction}, vitesse={speed_kmh} KM/H, angle={angle_deg}°")
 
-        # Calcul des vitesses pour les moteurs intérieur et extérieur
-        # La vitesse de la roue extérieure est la vitesse de référence
-        speed_exterieur_kmh = speed_kmh
-        
-        # Calcul du rapport de vitesse en fonction des rayons de virage
-        rayon_interieur_cm = rayon_cm - self.WHEELBASE_CM / 2
-        rayon_exterieur_cm = rayon_cm + self.WHEELBASE_CM / 2
-        
-        vitesse_ratio = rayon_interieur_cm / rayon_exterieur_cm
-        speed_interieur_kmh = speed_exterieur_kmh * vitesse_ratio
-        
-        # Calcul de la distance à parcourir pour la roue extérieure
-        distance_exterieur_cm = (2 * 3.14159 * rayon_exterieur_cm) * (angle_deg / 360)
-        steps_to_move_exterieur = int(distance_exterieur_cm * self.STEPS_PER_CM)
+        self.stop() # Arrête les mouvements précédents avant d'en démarrer un nouveau
+        self.stop_event.clear()
 
-        if direction == 'droite':
-            motor_exterieur = self.motor_gauche
-            motor_interieur = self.motor_droit
-            dir_gauche = True
-            dir_droit = True
-        elif direction == 'gauche':
-            motor_exterieur = self.motor_droit
-            motor_interieur = self.motor_gauche
-            dir_gauche = True
-            dir_droit = True
-        else:
-            print("Direction non valide. Utilisez 'gauche' ou 'droite'.")
-            return
+        # Pour une rotation sur place, les moteurs tournent dans des directions opposées
+        dir_gauche, dir_droit = self._get_direction_booleans(direction)
+        
+        # Calcul du nombre de pas pour la rotation
+        # La distance parcourue par les roues est la circonférence du cercle de braquage (2 * pi * rayon)
+        # où le rayon est la moitié de l'empattement.
+        # On utilise une formule simplifiée pour un virage sur place
+        distance_cm = (self.WHEELBASE_CM * 3.14159) * (angle_deg / 360.0)
+        steps_to_move = int(distance_cm * self.STEPS_PER_CM)
 
-        # Définition des vitesses pour chaque moteur
-        motor_exterieur.set_speed(self._calculate_delay(speed_exterieur_kmh))
-        motor_interieur.set_speed(self._calculate_delay(speed_interieur_kmh))
+        delay = self._calculate_delay(speed_kmh)
+
+        # Utilisation de la méthode move_steps de la classe StepperMotor sans threading
+        # car c'est un mouvement court et bloquant
+        self.motor_gauche.set_direction(dir_gauche)
+        self.motor_gauche.move_steps(steps_to_move, delay)
         
-        # Déplacement des deux moteurs en parallèle
-        thread_gauche = threading.Thread(target=self._move_motor_steps, args=(self.motor_gauche, steps_to_move_exterieur, dir_gauche))
-        thread_droit = threading.Thread(target=self._move_motor_steps, args=(self.motor_droit, int(steps_to_move_exterieur * vitesse_ratio), dir_droit))
+        self.motor_droit.set_direction(dir_droit)
+        self.motor_droit.move_steps(steps_to_move, delay)
+
+    def update_speed(self, speed_kmh):
+        """
+        Met à jour la vitesse des moteurs en cours de route.
+        """
+        delay = self._calculate_delay(speed_kmh)
+        print(f"Vitesse mise à jour en dynamique. Nouveau délai: {delay} sec")
         
-        print(f"Le robot tourne à {direction} de {angle_deg} degrés avec un rayon de {rayon_cm} cm.")
-        thread_gauche.start()
-        thread_droit.start()
-        
-        thread_gauche.join()
-        thread_droit.join()
+        # Les threads de mouvement lisent dynamiquement la vitesse
+        # Il suffit de mettre à jour le délai dans chaque moteur.
+        self.motor_gauche.set_speed(delay)
+        self.motor_droit.set_speed(delay)
 
     def stop(self):
-        """Arrête les deux moteurs et désactive les drivers."""
-        self.motor_gauche.disable_driver()
-        self.motor_droit.disable_driver()
-        #GPIO.cleanup()
-        print("Robot arrêté.")
+        """Arrête les deux moteurs et les désactive."""
+        if self.motor_threads:
+            print("Arrêt des moteurs...")
+            self.stop_event.set()
+            for thread in self.motor_threads:
+                if thread.is_alive():
+                    thread.join()
+            self.motor_threads = []
+            self.motor_gauche.disable()
+            self.motor_droit.disable()
+        else:
+            print("Aucun mouvement en cours à arrêter.")
 
-
-
-"""J'ai bien noté votre requête. Pour calculer la différence de vitesse entre les deux roues d'un robot en virage, on peut se baser sur la géométrie de la trajectoire.
-
-Le principe est que la roue extérieure doit parcourir une distance plus grande que la roue intérieure. Le rapport des vitesses est directement proportionnel au rapport des rayons de leurs trajectoires respectives.
-
-Voici la formule pour calculer le rapport de vitesse :
-
-Rapport 
-vitesse
-​
- = 
-R 
-interieur
-​
- 
-R 
-exterieur
-​
- 
-​
- = 
-R 
-virage
-​
- −d/2
-R 
-virage
-​
- +d/2
-​
- 
-
-Où :
-
-R 
-virage
-​
-  est le rayon du virage (entre 100 et 500 cm).
-
-d est la distance entre les deux roues (50 cm).
-
-J'ai mis à jour le document Canvas pour inclure ce calcul. J'ai ajouté une constante WHEELBASE_CM pour la distance entre les roues et j'ai modifié la méthode turn pour appliquer ce calcul. J'ai également fait en sorte que la rotation soit basée sur un angle, au lieu d'être continue.
-
-Code mis à jour du contrôleur de robot
-
-
-eof
-
-J'ai mis à jour le document Canvas. La méthode turn est maintenant beaucoup plus précise. Elle calcule le nombre de pas nécessaires pour chaque moteur afin que le robot tourne sur le rayon et l'angle que vous avez spécifiés.
-
-Vous avez maintenant un contrôle très précis sur le mouvement de votre robot. Est-ce qu'il y a d'autres fonctions que vous aimeriez ajouter ?"""
+    def pause(self):
+        """Met le mouvement du robot en pause."""
+        print("Pause du robot...")
+        self.pause_event.set()
+        
+    def resume(self):
+        """Reprend le mouvement du robot après une pause."""
+        print("Reprise du robot...")
+        self.pause_event.clear()
+        

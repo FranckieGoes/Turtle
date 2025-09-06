@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle du Robot Tondeuse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #1f2937;
+        }
+        .arrow {
+            transform-origin: center;
+            transition: transform 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6">
+
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-indigo-700">Contrôle du Robot</h1>
+        <p class="text-gray-600 mb-6">Utilisez les commandes ci-dessous pour piloter le robot.</p>
+
+        <div class="flex items-center justify-around mb-6 space-x-4">
+            <div id="compas" class="w-36 h-36 bg-gray-200 rounded-full flex items-center justify-center relative shadow-inner overflow-hidden">
+                <div class="w-full h-full absolute">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="2"></circle>
+                        <g id="indicators">
+                            <line x1="50" y1="5" x2="50" y2="15" stroke="#4b5563" stroke-width="2"></line>
+                        </g>
+                    </svg>
+                </div>
+                <svg id="arrow" class="arrow w-20 h-20 absolute" viewBox="0 0 100 100" style="transform: rotate(0deg);">
+                    <defs>
+                        <linearGradient id="gradientArrow" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#374151;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 50,5 L 35,90 L 65,90 Z" fill="url(#gradientArrow)"></path>
+                    <circle cx="50" cy="50" r="10" fill="#4f46e5" stroke="white" stroke-width="2"></circle>
+                </svg>
+            </div>
+            
+            <div class="w-36 h-36 relative flex items-center justify-center">
+                <svg class="w-full h-full absolute top-0 left-0" viewBox="0 0 100 100">
+                    <circle class="text-gray-200" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"></circle>
+                    <circle id="speed-circle" class="text-indigo-600 transition-all duration-300 ease-in-out" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" style="stroke-dasharray: 251.327; stroke-dashoffset: 251.327; transform: rotate(-90deg); transform-origin: 50% 50%;"></circle>
+                </svg>
+                <div class="absolute flex flex-col items-center">
+                    <span id="current-speed-display" class="text-2xl font-bold text-gray-800">5KM/H</span>
+                    <span class="text-xs text-gray-500">Vitesse</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col items-center mb-6">
+            <h2 class="text-xl font-semibold mb-3 text-gray-800">Commandes de Direction</h2>
+            <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
+                <div class="col-start-2">
+                    <button id="forward-btn" class="w-full p-4 rounded-xl bg-indigo-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-indigo-600 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                    </button>
+                </div>
+                <button id="left-btnfffff" >         
+                </button>
+                <button id="left-btn" class="p-4 rounded-xl bg-gray-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-gray-600 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                </button>
+                <button id="stop-btn" class="p-4 rounded-xl bg-red-500 text-white font-bold text-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-red-600 focus:outline-none">STOP</button>
+                <button id="right-btn" class="p-4 rounded-xl bg-gray-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-gray-600 focus:outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                </button>
+                <div class="col-start-2">
+                    <button id="backward-btn" class="w-full p-4 rounded-xl bg-indigo-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-indigo-600 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 w-full mb-6">
+            <div class="w-full">
+                <h3 class="text-lg font-semibold mb-2 text-gray-800">Angle de Braquage</h3>
+                <div class="flex items-center justify-center space-x-2">
+                    <button id="angle-minus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">-</button>
+                    <span id="current-angle-display" class="text-xl font-bold text-gray-800 w-16 text-center">0°</span>
+                    <button id="angle-plus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">+</button>
+                </div>
+            </div>
+
+            <div class="w-full">
+                <h3 class="text-lg font-semibold mb-2 text-gray-800">Vitesse (KM/H)</h3>
+                <div class="flex items-center justify-center space-x-2">
+                    <button id="speed-minus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">-</button>
+                    <span id="current-speed-value" class="text-xl font-bold text-gray-800 w-16 text-center">5</span>
+                    <button id="speed-plus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-full flex justify-center space-x-4">
+            <button id="pause-btn" class="p-4 rounded-xl bg-yellow-500 text-white font-bold shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-yellow-600 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+            <button id="resume-btn" class="p-4 rounded-xl bg-green-500 text-white font-bold shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-green-600 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.125l-2.073-1.196-1.666-.96-2.083-1.202M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Références des éléments
+            const arrow = document.getElementById('arrow');
+            const forwardBtn = document.getElementById('forward-btn');
+            const backwardBtn = document.getElementById('backward-btn');
+            const leftBtn = document.getElementById('left-btn');
+            const rightBtn = document.getElementById('right-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const resumeBtn = document.getElementById('resume-btn');
+            
+            const anglePlusBtn = document.getElementById('angle-plus-btn');
+            const angleMinusBtn = document.getElementById('angle-minus-btn');
+            const currentAngleDisplay = document.getElementById('current-angle-display');
+
+            const speedPlusBtn = document.getElementById('speed-plus-btn');
+            const speedMinusBtn = document.getElementById('speed-minus-btn');
+            const currentSpeedDisplay = document.getElementById('current-speed-display'); // Pour le graphique circulaire
+            const currentSpeedValue = document.getElementById('current-speed-value'); // Pour la valeur texte
+            const speedCircle = document.getElementById('speed-circle');
+
+            // Constantes
+            const MAX_ANGLE = 10;
+            const MIN_ANGLE = -10;
+            const MAX_SPEED = 10;
+            const MIN_SPEED = 1; // Vitesse minimale de 1 KM/H
+
+            // Variables d'état
+            let currentAngle = 0;
+            let currentSpeed = 5;
+
+            // --- Fonctions ---
+
+            // Fonction pour envoyer des commandes au serveur
+            const sendCommand = async (command) => {
+                const data = { command, angle: currentAngle, speed: currentSpeed };
+                try {
+                    const response = await fetch('/api/command', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data),
+                    });
+                    const result = await response.json();
+                    console.log(result.message);
+                } catch (error) {
+                    console.error('Erreur lors de l\'envoi de la commande:', error);
+                }
+            };
+            
+            // Mettre à jour la rotation de la flèche du compas
+            const updateArrowRotation = (angle) => {
+                const rotationDeg = angle * 9; // Échelle de -10° à +10° -> rotation de -90° à +90°
+                arrow.style.transform = `rotate(${rotationDeg}deg)`;
+            };
+
+            // Mettre à jour le graphique de vitesse circulaire
+            const updateSpeedGraph = (speed) => {
+                const radius = 40;
+                const circumference = 2 * Math.PI * radius;
+                const progress = ((speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * circumference;
+                speedCircle.style.strokeDasharray = circumference;
+                speedCircle.style.strokeDashoffset = circumference - progress;
+                currentSpeedDisplay.textContent = `${speed}KM/H`;
+                currentSpeedValue.textContent = speed;
+            };
+
+            // --- Écouteurs d'événements (Event Listeners) ---
+
+            // Boutons de direction
+            forwardBtn.addEventListener('click', () => sendCommand('forward'));
+            backwardBtn.addEventListener('click', () => sendCommand('backward'));
+            leftBtn.addEventListener('click', () => sendCommand('left'));
+            rightBtn.addEventListener('click', () => sendCommand('right'));
+            stopBtn.addEventListener('click', () => sendCommand('stop'));
+            
+            // Boutons Pause/Reprise
+            pauseBtn.addEventListener('click', () => sendCommand('pause'));
+            resumeBtn.addEventListener('click', () => sendCommand('resume'));
+
+            // Boutons d'ajustement de l'angle
+            anglePlusBtn.addEventListener('click', () => {
+                currentAngle = Math.min(MAX_ANGLE, currentAngle + 1);
+                currentAngleDisplay.textContent = `${currentAngle}°`;
+                updateArrowRotation(currentAngle);
+                sendCommand('set_angle');
+            });
+
+            angleMinusBtn.addEventListener('click', () => {
+                currentAngle = Math.max(MIN_ANGLE, currentAngle - 1);
+                currentAngleDisplay.textContent = `${currentAngle}°`;
+                updateArrowRotation(currentAngle);
+                sendCommand('set_angle');
+            });
+
+            // Boutons d'ajustement de la vitesse
+            speedPlusBtn.addEventListener('click', () => {
+                currentSpeed = Math.min(MAX_SPEED, currentSpeed + 1);
+                updateSpeedGraph(currentSpeed);
+                sendCommand('set_speed');
+            });
+
+            speedMinusBtn.addEventListener('click', () => {
+                currentSpeed = Math.max(MIN_SPEED, currentSpeed - 1);
+                updateSpeedGraph(currentSpeed);
+                sendCommand('set_speed');
+            });
+
+            // --- Initialisation de l'interface ---
+            const initializeUI = () => {
+                currentAngleDisplay.textContent = `${currentAngle}°`;
+                updateArrowRotation(currentAngle);
+                updateSpeedGraph(currentSpeed);
+            };
+
+            initializeUI();
+        });
+    </script>
+</body>
+</html>
