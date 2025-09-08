@@ -26,6 +26,8 @@ class StepperMotor:
         self.DELAY = delay
         self.STEPS_PER_REV = steps_per_rev
         self.STEPS_PER_ADJUSTED_REV = adjusted_steps_per_rev
+        self.current_thread = None # Garde une référence au thread en cours
+        self.current_direction = True  # Nouvelle variable pour stocker la direction actuelle
 
         # Configuration de la carte Raspberry Pi
         GPIO.setmode(GPIO.BCM)
@@ -47,12 +49,13 @@ class StepperMotor:
 
     def set_direction(self, direction):
         """
-        Définit la direction de rotation.
+        Définit la direction de rotation et l'enregistre.
         
         Args:
             direction (bool): True pour un sens, False pour l'autre.
         """
         GPIO.output(self.DIR_PIN, direction)
+        self.current_direction = direction  # Enregistre la direction
 
     def move_steps(self, steps, direction):
         """
@@ -107,11 +110,6 @@ class StepperMotor:
     def move_continuously(self, direction, stop_event, pause_event):
         """
         Fait tourner le moteur en continu jusqu'à ce qu'un événement d'arrêt soit déclenché.
-
-        Args:
-            direction (bool): La direction de la rotation (True ou False).
-            stop_event (threading.Event): Événement pour arrêter le mouvement.
-            pause_event (threading.Event): Événement pour mettre en pause le mouvement.
         """
         self.set_direction(direction)
         self.enable()
@@ -123,7 +121,54 @@ class StepperMotor:
                 GPIO.output(self.STEP_PIN, GPIO.LOW)
                 time.sleep(self.DELAY)
             else:
-                # Si en pause, attendre un peu avant de vérifier à nouveau
                 time.sleep(0.1)
         
         self.disable()
+    
+    def ramp_up(self, target_delay, direction, stop_event, pause_event, ramp_steps=100):
+        """
+        Démarre le moteur progressivement.
+        """
+        start_delay = 0.005 # Délai initial pour une vitesse très basse
+        delay_step_size = (start_delay - target_delay) / ramp_steps
+        
+        self.set_direction(direction)
+        self.enable()
+        
+        current_delay = start_delay
+        
+        # Phase de rampe de montée
+        for i in range(ramp_steps):
+            if stop_event.is_set():
+                break
+            
+            self.DELAY = current_delay
+            self.step(direction)
+            current_delay -= delay_step_size
+        
+        # Mouvement continu à la vitesse de croisière
+        if not stop_event.is_set():
+            self.DELAY = target_delay
+            self.move_continuously(direction, stop_event, pause_event)
+            
+    def ramp_down(self, direction, stop_event, ramp_steps=100):
+        """
+        Arrête le moteur progressivement en augmentant le délai entre les pas.
+        """
+        current_delay = self.DELAY
+        final_delay = 0.005  # Délai final pour un mouvement très lent
+        
+        # S'assurer que le délai final est plus grand pour ralentir
+        if current_delay < final_delay:
+            delay_step_size = (final_delay - current_delay) / ramp_steps
+            
+            for _ in range(ramp_steps):
+                if stop_event.is_set():
+                    break
+                
+                self.DELAY += delay_step_size
+                self.step(direction)
+            
+        # Arrêt final une fois le ralentissement terminé
+        self.disable()
+        stop_event.set()
