@@ -88,6 +88,7 @@ class RobotController:
         if direction == 'avant':
             return (True, True)
         elif direction == 'arriere':
+            print("direction arriere")
             return (False, False)
         elif direction == 'gauche':
             return (False, True)

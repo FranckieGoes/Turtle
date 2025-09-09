@@ -26,208 +26,195 @@
 
     <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
         <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-indigo-700">Contrôle du Robot</h1>
-        <p class="text-gray-600 mb-6">Utilisez les commandes ci-dessous pour piloter le robot.</p>
+        <p class="text-gray-600 mb-6">Contrôlez la direction et la vitesse de votre robot tondeuse en temps réel.</p>
 
-        <div class="flex items-center justify-around mb-6 space-x-4">
-            <div id="compas" class="w-36 h-36 bg-gray-200 rounded-full flex items-center justify-center relative shadow-inner overflow-hidden">
-                <div class="w-full h-full absolute">
-                    <svg class="w-full h-full" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" stroke-width="2"></circle>
-                        <g id="indicators">
-                            <line x1="50" y1="5" x2="50" y2="15" stroke="#4b5563" stroke-width="2"></line>
-                        </g>
+        <!-- Affichage du statut -->
+        <div id="status-display" class="bg-blue-100 text-blue-800 p-3 rounded-xl mb-6 text-sm">
+            <span id="status-text">Connecté au robot...</span>
+        </div>
+
+        <!-- Section de la vitesse -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2">Vitesse</h2>
+            <div class="flex items-center justify-center space-x-4 mb-4">
+                <button id="speedMinusBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-2xl font-bold hover:bg-gray-300 transition">-</button>
+                <div class="relative w-48 h-32">
+                    <canvas id="speedGraph" class="absolute inset-0 w-full h-full rounded-full border-4 border-gray-300"></canvas>
+                    <div id="speedValueDisplay" class="absolute inset-0 flex items-center justify-center font-bold text-3xl text-indigo-600">
+                        5 KM/H
+                    </div>
+                </div>
+                <button id="speedPlusBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-2xl font-bold hover:bg-gray-300 transition">+</button>
+            </div>
+            <p id="currentSpeedDisplay" class="text-gray-500 text-sm"></p>
+        </div>
+
+        <!-- Section de la direction -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-2">Direction</h2>
+            <div class="flex items-center justify-center space-x-4 mb-4">
+                <button id="angleMinusBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-2xl font-bold hover:bg-gray-300 transition">-</button>
+                <div class="relative w-32 h-32">
+                    <svg class="w-full h-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#e5e7eb" stroke-width="4"/>
+                        <line id="angleArrow" x1="50" y1="50" x2="50" y2="15" stroke="#4f46e5" stroke-width="4" stroke-linecap="round" class="arrow"/>
                     </svg>
+                    <div id="angleValueDisplay" class="absolute inset-0 flex items-center justify-center font-bold text-3xl text-indigo-600">
+                        5°
+                    </div>
                 </div>
-                <svg id="arrow" class="arrow w-20 h-20 absolute" viewBox="0 0 100 100" style="transform: rotate(0deg);">
-                    <defs>
-                        <linearGradient id="gradientArrow" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#374151;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#9ca3af;stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <path d="M 50,5 L 35,90 L 65,90 Z" fill="url(#gradientArrow)"></path>
-                    <circle cx="50" cy="50" r="10" fill="#4f46e5" stroke="white" stroke-width="2"></circle>
-                </svg>
+                <button id="anglePlusBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-full text-2xl font-bold hover:bg-gray-300 transition">+</button>
             </div>
-            
-            <div class="w-36 h-36 relative flex items-center justify-center">
-                <svg class="w-full h-full absolute top-0 left-0" viewBox="0 0 100 100">
-                    <circle class="text-gray-200" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50"></circle>
-                    <circle id="speed-circle" class="text-indigo-600 transition-all duration-300 ease-in-out" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" style="stroke-dasharray: 251.327; stroke-dashoffset: 251.327; transform: rotate(-90deg); transform-origin: 50% 50%;"></circle>
-                </svg>
-                <div class="absolute flex flex-col items-center">
-                    <span id="current-speed-display" class="text-2xl font-bold text-gray-800">5KM/H</span>
-                    <span class="text-xs text-gray-500">Vitesse</span>
-                </div>
-            </div>
+            <p id="currentAngleDisplay" class="text-gray-500 text-sm"></p>
         </div>
 
-        <div class="flex flex-col items-center mb-6">
-            <h2 class="text-xl font-semibold mb-3 text-gray-800">Commandes de Direction</h2>
-            <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
-                <div class="col-start-2">
-                    <button id="forward-btn" class="w-full p-4 rounded-xl bg-indigo-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-indigo-600 focus:outline-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
-                    </button>
-                </div>
-                <button id="left-btnfffff" >         
-                </button>
-                <button id="left-btn" class="p-4 rounded-xl bg-gray-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-gray-600 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                </button>
-                <button id="stop-btn" class="p-4 rounded-xl bg-red-500 text-white font-bold text-lg shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-red-600 focus:outline-none">STOP</button>
-                <button id="right-btn" class="p-4 rounded-xl bg-gray-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-gray-600 focus:outline-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                </button>
-                <div class="col-start-2">
-                    <button id="backward-btn" class="w-full p-4 rounded-xl bg-indigo-500 text-white shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-indigo-600 focus:outline-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
-                    </button>
-                </div>
-            </div>
+        <!-- Boutons de commande -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+            <button id="forwardBtn" class="bg-green-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-green-600 transition shadow-lg">Avancer</button>
+            <button id="stopBtn" class="bg-red-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-red-600 transition shadow-lg">Stop</button>
+            <button id="backwardBtn" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-yellow-600 transition shadow-lg">Reculer</button>
+        </div>
+        
+        <!-- Boutons d'enregistrement de la zone -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <button id="startRecordBtn" class="bg-blue-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-blue-600 transition shadow-lg">Enregistrer la zone</button>
+            <button id="stopRecordBtn" class="bg-orange-500 text-white font-bold py-3 px-6 rounded-xl hover:bg-orange-600 transition shadow-lg">Arrêter l'enregistrement</button>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 w-full mb-6">
-            <div class="w-full">
-                <h3 class="text-lg font-semibold mb-2 text-gray-800">Angle de Braquage</h3>
-                <div class="flex items-center justify-center space-x-2">
-                    <button id="angle-minus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">-</button>
-                    <span id="current-angle-display" class="text-xl font-bold text-gray-800 w-16 text-center">0°</span>
-                    <button id="angle-plus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">+</button>
-                </div>
-            </div>
-
-            <div class="w-full">
-                <h3 class="text-lg font-semibold mb-2 text-gray-800">Vitesse (KM/H)</h3>
-                <div class="flex items-center justify-center space-x-2">
-                    <button id="speed-minus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">-</button>
-                    <span id="current-speed-value" class="text-xl font-bold text-gray-800 w-16 text-center">5</span>
-                    <button id="speed-plus-btn" class="w-10 h-10 rounded-full bg-gray-300 text-gray-700 font-bold text-2xl shadow-md hover:bg-gray-400 transition-colors focus:outline-none">+</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="w-full flex justify-center space-x-4">
-            <button id="pause-btn" class="p-4 rounded-xl bg-yellow-500 text-white font-bold shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-yellow-600 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </button>
-            <button id="resume-btn" class="p-4 rounded-xl bg-green-500 text-white font-bold shadow-lg transform transition-all hover:scale-105 active:scale-95 hover:bg-green-600 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.125l-2.073-1.196-1.666-.96-2.083-1.202M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </button>
-        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Références des éléments
-            const arrow = document.getElementById('arrow');
-            const forwardBtn = document.getElementById('forward-btn');
-            const backwardBtn = document.getElementById('backward-btn');
-            const leftBtn = document.getElementById('left-btn');
-            const rightBtn = document.getElementById('right-btn');
-            const stopBtn = document.getElementById('stop-btn');
-            const pauseBtn = document.getElementById('pause-btn');
-            const resumeBtn = document.getElementById('resume-btn');
-            
-            const anglePlusBtn = document.getElementById('angle-plus-btn');
-            const angleMinusBtn = document.getElementById('angle-minus-btn');
-            const currentAngleDisplay = document.getElementById('current-angle-display');
+            const statusText = document.getElementById('status-text');
 
-            const speedPlusBtn = document.getElementById('speed-plus-btn');
-            const speedMinusBtn = document.getElementById('speed-minus-btn');
-            const currentSpeedDisplay = document.getElementById('current-speed-display'); // Pour le graphique circulaire
-            const currentSpeedValue = document.getElementById('current-speed-value'); // Pour la valeur texte
-            const speedCircle = document.getElementById('speed-circle');
+            const speedGraphCanvas = document.getElementById('speedGraph');
+            const speedCtx = speedGraphCanvas.getContext('2d');
+            const speedValueDisplay = document.getElementById('speedValueDisplay');
+            const speedPlusBtn = document.getElementById('speedPlusBtn');
+            const speedMinusBtn = document.getElementById('speedMinusBtn');
+            const currentSpeedDisplay = document.getElementById('currentSpeedDisplay');
 
-            // Constantes
-            const MAX_ANGLE = 10;
-            const MIN_ANGLE = -10;
-            const MAX_SPEED = 10;
-            const MIN_SPEED = 1; // Vitesse minimale de 1 KM/H
+            const angleArrow = document.getElementById('angleArrow');
+            const angleValueDisplay = document.getElementById('angleValueDisplay');
+            const anglePlusBtn = document.getElementById('anglePlusBtn');
+            const angleMinusBtn = document.getElementById('angleMinusBtn');
+            const currentAngleDisplay = document.getElementById('currentAngleDisplay');
 
-            // Variables d'état
+            const forwardBtn = document.getElementById('forwardBtn');
+            const backwardBtn = document.getElementById('backwardBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const startRecordBtn = document.getElementById('startRecordBtn');
+            const stopRecordBtn = document.getElementById('stopRecordBtn');
+
+            // --- Constantes de l'application ---
+            const MAX_SPEED = 10; // Vitesse maximale en KM/H
+            const MIN_SPEED = 0;
+            const MAX_ANGLE = 150;
+            const MIN_ANGLE = -150;
+
+            let currentSpeed = 3;
             let currentAngle = 0;
-            let currentSpeed = 5;
 
-            // --- Fonctions ---
+            let currentdirection = "vide";
 
-            // Fonction pour envoyer des commandes au serveur
-            const sendCommand = async (command) => {
-                const data = { command, angle: currentAngle, speed: currentSpeed };
+            // --- Fonctions d'aide pour l'interface utilisateur ---
+            const updateSpeedGraph = (speed) => {
+                const percentage = (speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED);
+                const gradient = speedCtx.createLinearGradient(0, 0, 0, speedGraphCanvas.height);
+                gradient.addColorStop(0, '#a5b4fc'); // Bleu clair
+                gradient.addColorStop(percentage, '#4f46e5'); // Indigo
+                gradient.addColorStop(percentage, '#e5e7eb'); // Gris
+                gradient.addColorStop(1, '#e5e7eb');
+
+                speedCtx.clearRect(0, 0, speedGraphCanvas.width, speedGraphCanvas.height);
+                speedCtx.fillStyle = gradient;
+                speedCtx.fillRect(0, 0, speedGraphCanvas.width, speedGraphCanvas.height);
+            };
+
+            const updateArrowRotation = (angle) => {
+                angleArrow.style.transform = `rotate(${angle}deg)`;
+            };
+
+            // --- Fonction pour envoyer les commandes au serveur Flask ---
+            const sendCommand = async (command, data = {}) => {
+                const commandData = { ...data, command: command };
+                statusText.textContent = `Envoi de la commande: ${command}...`;
+
                 try {
-                    const response = await fetch('/api/command', {
+                    const response = await fetch('/command', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data),
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(commandData)
                     });
+
                     const result = await response.json();
-                    console.log(result.message);
+                    if (result.status === 'success') {
+                        statusText.textContent = `Commande "${command}" réussie. ${result.message}`;
+                    } else {
+                        statusText.textContent = `Erreur lors de la commande "${command}". ${result.message}`;
+                    }
                 } catch (error) {
-                    console.error('Erreur lors de l\'envoi de la commande:', error);
+                    statusText.textContent = `Échec de l'envoi de la commande: ${error.message}`;
+                    console.error('Error:', error);
                 }
             };
-            
-            // Mettre à jour la rotation de la flèche du compas
-            const updateArrowRotation = (angle) => {
-                const rotationDeg = angle * 9; // Échelle de -10° à +10° -> rotation de -90° à +90°
-                arrow.style.transform = `rotate(${rotationDeg}deg)`;
-            };
 
-            // Mettre à jour le graphique de vitesse circulaire
-            const updateSpeedGraph = (speed) => {
-                const radius = 40;
-                const circumference = 2 * Math.PI * radius;
-                const progress = ((speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * circumference;
-                speedCircle.style.strokeDasharray = circumference;
-                speedCircle.style.strokeDashoffset = circumference - progress;
-                currentSpeedDisplay.textContent = `${speed}KM/H`;
-                currentSpeedValue.textContent = speed;
-            };
-
-            // --- Écouteurs d'événements (Event Listeners) ---
-
-            // Boutons de direction
-            forwardBtn.addEventListener('click', () => sendCommand('forward'));
-            backwardBtn.addEventListener('click', () => sendCommand('backward'));
-            leftBtn.addEventListener('click', () => sendCommand('left'));
-            rightBtn.addEventListener('click', () => sendCommand('right'));
+            // --- Gestionnaires d'événements pour les boutons ---
+            //forwardBtn.addEventListener('click', () => sendCommand('forward'));
+            forwardBtn.addEventListener('click', () => {
+                currentdirection = "avant";
+                sendCommand('set_angle', { angle: currentAngle });
+                sendCommand('set_speed', { speed: currentSpeed });
+                sendCommand('move', { direction: currentdirection });
+            });
+            backwardBtn.addEventListener('click', () => {
+                currentdirection = "arriere";
+                sendCommand('set_angle', { angle: currentAngle });
+                sendCommand('set_speed', { speed: currentSpeed });
+                sendCommand('move', { direction: currentdirection });
+            });
             stopBtn.addEventListener('click', () => sendCommand('stop'));
-            
-            // Boutons Pause/Reprise
-            pauseBtn.addEventListener('click', () => sendCommand('pause'));
-            resumeBtn.addEventListener('click', () => sendCommand('resume'));
 
             // Boutons d'ajustement de l'angle
             anglePlusBtn.addEventListener('click', () => {
                 currentAngle = Math.min(MAX_ANGLE, currentAngle + 1);
-                currentAngleDisplay.textContent = `${currentAngle}°`;
+                angleValueDisplay.textContent = `${currentAngle}°`;
                 updateArrowRotation(currentAngle);
-                sendCommand('set_angle');
+                sendCommand('set_angle', { angle: currentAngle });
             });
 
             angleMinusBtn.addEventListener('click', () => {
                 currentAngle = Math.max(MIN_ANGLE, currentAngle - 1);
-                currentAngleDisplay.textContent = `${currentAngle}°`;
+                angleValueDisplay.textContent = `${currentAngle}°`;
                 updateArrowRotation(currentAngle);
-                sendCommand('set_angle');
+                sendCommand('set_angle', { angle: currentAngle });
             });
 
             // Boutons d'ajustement de la vitesse
             speedPlusBtn.addEventListener('click', () => {
                 currentSpeed = Math.min(MAX_SPEED, currentSpeed + 1);
+                speedValueDisplay.textContent = `${currentSpeed} KM/H`;
                 updateSpeedGraph(currentSpeed);
-                sendCommand('set_speed');
+                sendCommand('set_speed', { speed: currentSpeed });
             });
 
             speedMinusBtn.addEventListener('click', () => {
                 currentSpeed = Math.max(MIN_SPEED, currentSpeed - 1);
+                speedValueDisplay.textContent = `${currentSpeed} KM/H`;
                 updateSpeedGraph(currentSpeed);
-                sendCommand('set_speed');
+                sendCommand('set_speed', { speed: currentSpeed });
             });
+
+            // Boutons d'enregistrement de la zone de tonte
+            startRecordBtn.addEventListener('click', () => sendCommand('start_recording'));
+            stopRecordBtn.addEventListener('click', () => sendCommand('stop_recording'));
 
             // --- Initialisation de l'interface ---
             const initializeUI = () => {
-                currentAngleDisplay.textContent = `${currentAngle}°`;
+                angleValueDisplay.textContent = `${currentAngle}°`;
+                speedValueDisplay.textContent = `${currentSpeed} KM/H`;
                 updateArrowRotation(currentAngle);
                 updateSpeedGraph(currentSpeed);
             };
