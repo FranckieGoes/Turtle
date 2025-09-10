@@ -6,7 +6,7 @@
     <title>Visualisation de la Zone de Tonte</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;800;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
@@ -20,112 +20,92 @@
             background-color: #e2e8f0;
             border-radius: 1rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            touch-action: none; /* Empêche le défilement de la page lors d'un pinch-to-zoom */
         }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-6">
 
-    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl text-center flex flex-col items-center">
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl text-center">
         <h1 class="text-3xl sm:text-4xl font-bold mb-4 text-indigo-700">Visualisation de la Zone</h1>
-        <p class="text-gray-600 mb-6">Tracé du dernier parcours enregistré du robot.</p>
-
-        <!-- Conteneur pour le canvas, la zone de zoom, et le message d'état -->
-        <div class="relative w-full h-96">
-            <canvas id="mowingZoneCanvas" class="w-full h-full"></canvas>
-            
-            <!-- Contrôles de zoom -->
-            <div class="absolute bottom-4 right-4 flex space-x-2">
-                <button id="zoomInBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold p-3 rounded-full shadow-lg transition-transform transform hover:scale-110 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                </button>
-                <button id="zoomOutBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold p-3 rounded-full shadow-lg transition-transform transform hover:scale-110 active:scale-95">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                    </svg>
-                </button>
+        <p class="text-gray-600 mb-6">Tracé du dernier parcours enregistré du robot tondeuse.</p>
+        
+        <!-- Canvas pour la visualisation -->
+        <div class="relative w-full aspect-square">
+            <canvas id="mowingCanvas" class="w-full h-full"></canvas>
+            <!-- Indicateur de chargement -->
+            <div id="loadingIndicator" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 rounded-2xl z-10 hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
             </div>
-
-            <!-- Message d'état du zoom -->
-            <div id="zoomStatus" class="absolute bottom-4 left-4 bg-gray-800 text-white text-xs px-2 py-1 rounded-full shadow-md">
-                Zoom: 100%
-            </div>
-            <div class="mt-6 flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-            <button onclick="fetchAndDrawPath()" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-full transition-colors duration-200">
-                <span class="mr-2">🔄</span> Recharger le tracé
-            </button>
-            <a href="/" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-full transition-colors duration-200">
-                <span class="mr-2">🏠</span> Retour au contrôle
-            </a>
         </div>
+
+        <!-- Section pour les informations sur le parcours -->
+        <div class="mt-6 text-left">
+            <h2 class="text-2xl font-semibold mb-2 text-gray-800">Détails du Parcours</h2>
+            <p class="text-gray-600">Distance totale parcourue : <span id="totalDistance" class="font-medium text-gray-800">0 m</span></p>
+            <p class="text-gray-600">Temps de tonte : <span id="mowingTime" class="font-medium text-gray-800">0 min</span></p>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const canvas = document.getElementById('mowingZoneCanvas');
+            const canvas = document.getElementById('mowingCanvas');
             const ctx = canvas.getContext('2d');
-            const zoomInBtn = document.getElementById('zoomInBtn');
-            const zoomOutBtn = document.getElementById('zoomOutBtn');
-            const zoomStatus = document.getElementById('zoomStatus');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const totalDistanceDisplay = document.getElementById('totalDistance');
+            const mowingTimeDisplay = document.getElementById('mowingTime');
 
-            // Données de test pour le tracé
-            const vectors = [
-                { "distance": 100, "relative_angle": 0 },
-                { "distance": 150, "relative_angle": 90 },
-                { "distance": 120, "relative_angle": -45 },
-                { "distance": 180, "relative_angle": 90 },
-                { "distance": 200, "relative_angle": -135 },
-                { "distance": 100, "relative_angle": 0 },
-                { "distance": 150, "relative_angle": 90 },
-                { "distance": 120, "relative_angle": -45 },
-                { "distance": 180, "relative_angle": 90 },
-                { "distance": 200, "relative_angle": -135 }
+            // Données de parcours simulées (remplacer par les données du backend)
+            // Chaque objet représente un segment de déplacement
+            // distance: en unités arbitraires (par exemple, 1 unité = 1 cm)
+            // relative_angle: l'angle de rotation par rapport à la direction précédente, en degrés
+            const sampleVectors = [
+                { distance: 100, relative_angle: 0 },
+                { distance: 50, relative_angle: 90 },
+                { distance: 150, relative_angle: 0 },
+                { distance: 50, relative_angle: 90 },
+                { distance: 100, relative_angle: 0 },
+                { distance: 50, relative_angle: 90 },
+                { distance: 150, relative_angle: 0 },
+                { distance: 50, relative_angle: 90 },
             ];
 
-            let scale = 1.0;
-            let originX = 0;
-            let originY = 0;
+            // Constantes pour le rendu visuel
+            const DISTANCE_TO_PIXEL_RATIO = 1; // 1 unité de distance = 1 pixel sur le canvas
+            const FADE_IN_TIME = 1000; // Durée du fondu d'apparition en ms
 
-            const MIN_SCALE = 0.5;
-            const MAX_SCALE = 4.0;
-            const ZOOM_STEP = 0.2;
+            /**
+             * Dessine le chemin de tonte sur le canvas.
+             * @param {Array<Object>} vectors - La liste des vecteurs de mouvement.
+             */
+            const drawPath = (vectors) => {
+                loadingIndicator.style.display = 'none';
 
-            // Fonction pour dessiner le tracé
-            const drawTrace = () => {
-                // Ajuster la taille du canvas
-                const parent = canvas.parentElement;
-                canvas.width = parent.clientWidth;
-                canvas.height = parent.clientHeight;
-
-                // Effacer le canvas et appliquer la transformation de zoom
+                // Nettoyer le canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.save();
-                ctx.translate(canvas.width / 2 + originX, canvas.height / 2 + originY);
-                ctx.scale(scale, scale);
-                ctx.translate(-(canvas.width / 2), -(canvas.height / 2));
-                
-                // Dessiner le tracé
+
+                // Paramètres de dessin pour le chemin
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
+                // Position et angle de départ (au centre, pointant vers le haut)
                 let currentX = canvas.width / 2;
                 let currentY = canvas.height / 2;
                 let currentAngle = -90; // Le "haut" du canvas, en degrés
-                
+
+                // Démarrer le tracé du chemin
                 ctx.beginPath();
                 ctx.moveTo(currentX, currentY);
 
                 vectors.forEach(vector => {
-                    const distance = vector.distance;
+                    const distance = vector.distance * DISTANCE_TO_PIXEL_RATIO;
                     const relativeAngle = vector.relative_angle;
-                    
+
+                    // Mettre à jour l'angle absolu
                     currentAngle += relativeAngle;
-                    const angleRad = (currentAngle + 90) * Math.PI / 180;
+                    // Conversion en radians, en ajustant pour que 0° soit vers la droite (Math.cos/sin) et -90° vers le haut
+                    const angleRad = (currentAngle) * Math.PI / 180;
 
                     const newX = currentX + distance * Math.cos(angleRad);
                     const newY = currentY + distance * Math.sin(angleRad);
@@ -135,104 +115,53 @@
                     currentY = newY;
                 });
                 
+                // Dessiner le chemin
                 ctx.stroke();
-
-                // Dessiner le point de départ
+                
+                // Dessiner un point de départ
                 ctx.beginPath();
                 ctx.arc(canvas.width / 2, canvas.height / 2, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = '#10b981';
+                ctx.fillStyle = '#10b981'; // Vert
                 ctx.fill();
 
-                // Dessiner le point d'arrivée
+                // Dessiner un point d'arrivée
                 ctx.beginPath();
                 ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ef4444';
+                ctx.fillStyle = '#ef4444'; // Rouge
                 ctx.fill();
-
-                // Restaurer l'état du canvas
-                ctx.restore();
             };
 
-            // Fonction pour mettre à jour le niveau de zoom
-            const updateZoom = (newScale) => {
-                scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
-                drawTrace();
-                zoomStatus.textContent = `Zoom: ${Math.round(scale * 100)}%`;
+            /**
+             * Calcule les statistiques de parcours et les affiche.
+             * @param {Array<Object>} vectors - La liste des vecteurs de mouvement.
+             */
+            const updateStats = (vectors) => {
+                const totalDistance = vectors.reduce((sum, vector) => sum + vector.distance, 0);
+                const estimatedMowingTime = totalDistance / 1000 * 2; // Exemple: 2 minutes par mètre
+                
+                totalDistanceDisplay.textContent = `${(totalDistance / 100).toFixed(2)} m`;
+                mowingTimeDisplay.textContent = `${estimatedMowingTime.toFixed(0)} min`;
             };
 
-            // Événements de zoom
-            zoomInBtn.addEventListener('click', () => updateZoom(scale + ZOOM_STEP));
-            zoomOutBtn.addEventListener('click', () => updateZoom(scale - ZOOM_STEP));
+            /**
+             * Rend le canvas réactif aux changements de taille de la fenêtre.
+             */
+            const resizeCanvas = () => {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+                drawPath(sampleVectors);
+            };
 
-            // Zoom avec la molette de la souris
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const newScale = e.deltaY > 0 ? scale - ZOOM_STEP : scale + ZOOM_STEP;
-                updateZoom(newScale);
-            });
+            // Événement pour gérer le redimensionnement de la fenêtre
+            window.addEventListener('resize', resizeCanvas);
 
-            // Gérer le redimensionnement de la fenêtre
-            window.addEventListener('resize', () => {
-                drawTrace();
-            });
-
-            // Pan avec la souris
-            let isDragging = false;
-            let lastX = 0;
-            let lastY = 0;
-
-            canvas.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                lastX = e.clientX;
-                lastY = e.clientY;
-            });
-
-            canvas.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaX = e.clientX - lastX;
-                    const deltaY = e.clientY - lastY;
-                    originX += deltaX;
-                    originY += deltaY;
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    drawTrace();
-                }
-            });
-
-            canvas.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-
-            // Gérer le pan sur les appareils tactiles
-            let lastTouchX = 0;
-            let lastTouchY = 0;
-
-            canvas.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                const touch = e.touches[0];
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
-            }, { passive: false });
-
-            canvas.addEventListener('touchmove', (e) => {
-                if (isDragging) {
-                    const touch = e.touches[0];
-                    const deltaX = touch.clientX - lastTouchX;
-                    const deltaY = touch.clientY - lastTouchY;
-                    originX += deltaX;
-                    originY += deltaY;
-                    lastTouchX = touch.clientX;
-                    lastTouchY = touch.clientY;
-                    drawTrace();
-                }
-            }, { passive: false });
-
-            canvas.addEventListener('touchend', () => {
-                isDragging = false;
-            });
-            
-            // Lancement initial du dessin
-            drawTrace();
+            // Simulation du chargement et du dessin initial
+            loadingIndicator.style.display = 'flex';
+            setTimeout(() => {
+                resizeCanvas();
+                updateStats(sampleVectors);
+            }, 500); // Délai pour simuler le chargement des données
         });
     </script>
 </body>

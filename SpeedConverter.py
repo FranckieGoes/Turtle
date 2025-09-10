@@ -5,7 +5,7 @@ class SpeedConverter:
     """
     Classe pour convertir une vitesse en km/h en nombre de pas moteur par seconde.
     """
-    
+
     def __init__(self, steps_per_rev, wheel_diameter_mm):
         """
         Initialise le convertisseur avec les spécifications du moteur et de la roue.
@@ -16,7 +16,7 @@ class SpeedConverter:
         """
         self.steps_per_rev = steps_per_rev
         self.wheel_diameter_mm = wheel_diameter_mm
-        
+
     def convert_kmh_to_steps_per_sec(self, speed_kmh):
         """
         Convertit une vitesse en km/h en pas par seconde.
@@ -35,12 +35,14 @@ class SpeedConverter:
         # Divise par 10 pour convertir mm en cm
         wheel_diameter_cm = self.wheel_diameter_mm / 10
         wheel_circumference_cm = math.pi * wheel_diameter_cm
-        
+
         # 2. Convertir la vitesse de km/h en cm/s
-        # 1 km = 100 000 cm, 1 h = 3600 s
+        # 1 km = 100000 cm, 1 h = 3600 s
         speed_cm_per_sec = (speed_kmh * 100000) / 3600
         
         # 3. Calculer les tours de roue par seconde
+        if wheel_circumference_cm == 0:
+            return 0
         wheel_revs_per_sec = speed_cm_per_sec / wheel_circumference_cm
         
         # 4. Convertir les tours de roue en pas par seconde
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     steps_per_second = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
     print(f"Pour une vitesse de {test_speed_kmh} km/h, le moteur doit tourner à {steps_per_second:.2f} pas/seconde.")
 
-    # Tester une vitesse de 10 km/h
+    # Vitesse maximale 10 km/h
     test_speed_kmh = 10.0
     steps_per_second = converter.convert_kmh_to_steps_per_sec(test_speed_kmh)
     print(f"Pour une vitesse de {test_speed_kmh} km/h, le moteur doit tourner à {steps_per_second:.2f} pas/seconde.")

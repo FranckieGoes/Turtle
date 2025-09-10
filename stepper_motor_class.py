@@ -27,72 +27,76 @@ class StepperMotor:
         self.STEPS_PER_REV = steps_per_rev
         self.STEPS_PER_ADJUSTED_REV = adjusted_steps_per_rev
         self.current_thread = None # Garde une référence au thread en cours
-        self.current_direction = True  # Nouvelle variable pour stocker la direction actuelle
+        
+        # État de l'initialisation GPIO
+        self.gpio_initialized = False
 
         # Configuration de la carte Raspberry Pi
         GPIO.setmode(GPIO.BCM)
+        
+        # Configuration des broches
         GPIO.setup(self.DIR_PIN, GPIO.OUT)
         GPIO.setup(self.STEP_PIN, GPIO.OUT)
         GPIO.setup(self.EN_PIN, GPIO.OUT)
-
-        # Désactiver le moteur par défaut
-        GPIO.output(self.EN_PIN, GPIO.HIGH)
-
-    def enable(self):
-        """Active le moteur."""
-        GPIO.output(self.EN_PIN, GPIO.LOW)
-
-    def disable(self):
-        """Désactive le moteur."""
-        GPIO.output(self.EN_PIN, GPIO.HIGH)
-        print("Moteur désactivé.")
-
+        
+        # Initialisation réussie
+        self.gpio_initialized = True
+        
     def set_direction(self, direction):
-        """
-        Définit la direction de rotation et l'enregistre.
+        """Définit la direction du moteur (True pour une direction, False pour l'autre)."""
+        if self.gpio_initialized:
+            GPIO.output(self.DIR_PIN, direction)
         
-        Args:
-            direction (bool): True pour un sens, False pour l'autre.
-        """
-        GPIO.output(self.DIR_PIN, direction)
-        self.current_direction = direction  # Enregistre la direction
-
-    def move_steps(self, steps, direction):
-        """
-        Fait avancer le moteur d'un nombre de pas spécifié.
-
-        Args:
-            steps (int): Le nombre de pas à effectuer.
-            direction (bool): Le sens de rotation (True ou False).
-        """
-        self.set_direction(direction)
-        self.enable()
+    def enable(self):
+        """Active le moteur. La broche EN doit être LOW pour activer."""
+        if self.gpio_initialized:
+            print(f"Moteur sur broche EN {self.EN_PIN} activé.")
+            GPIO.output(self.EN_PIN, GPIO.LOW)
+            
+    def disable(self):
+        """Désactive le moteur. La broche EN doit être HIGH pour désactiver."""
+        if self.gpio_initialized:
+            print(f"Moteur sur broche EN {self.EN_PIN} désactivé.")
+            GPIO.output(self.EN_PIN, GPIO.HIGH)
         
-        for _ in range(int(steps)):
+    def step(self, direction):
+        """Effectue un pas du moteur."""
+        if self.gpio_initialized:
+            self.set_direction(direction)
             GPIO.output(self.STEP_PIN, GPIO.HIGH)
             time.sleep(self.DELAY)
             GPIO.output(self.STEP_PIN, GPIO.LOW)
             time.sleep(self.DELAY)
-
-        self.disable()
-
-    def step(self, direction):
-        """Fait un seul pas dans la direction spécifiée."""
-        self.set_direction(direction)
-        GPIO.output(self.STEP_PIN, GPIO.HIGH)
-        time.sleep(self.DELAY)
-        GPIO.output(self.STEP_PIN, GPIO.LOW)
-        time.sleep(self.DELAY)
-
-    def rotate_degrees(self, degrees, direction):
+            
+    def move_steps(self, steps, direction):
         """
-        Fait tourner le moteur d'un certain nombre de degrés.
-
+        Fait tourner le moteur d'un nombre de pas spécifié.
+        
         Args:
-            degrees (int): Le nombre de degrés à tourner.
-            direction (bool): Le sens de rotation (True ou False).
+            steps (int): Nombre de pas à effectuer.
+            direction (bool): Direction de la rotation.
+            delay (float): Délai entre les pas pour contrôler la vitesse.
         """
-        # Calcule le nombre de pas requis pour un certain nombre de degrés
+        if self.gpio_initialized:
+            self.set_direction(direction)
+            self.enable()
+            print(f"Déplacement de {steps} pas. Direction: {direction}, Délai: {delay:.6f}s")
+            for _ in range(steps):
+                GPIO.output(self.STEP_PIN, GPIO.HIGH)
+                time.sleep(self.DELAY) # Use the delay passed as a parameter
+                GPIO.output(self.STEP_PIN, GPIO.LOW)
+                time.sleep(self.DELAY)
+            self.disable()
+            print("Déplacement terminé.")
+            
+    def move_degrees(self, degrees, direction):
+        """
+        Fait tourner le moteur d'un angle spécifié.
+        
+        Args:
+            degrees (float): Angle de rotation en degrés.
+            direction (bool): Direction de la rotation.
+        """
         steps_to_move = int(self.STEPS_PER_ADJUSTED_REV * (degrees / 360))
         print(f"Rotation de {degrees} degrés, soit {steps_to_move} pas.")
         self.move_steps(steps_to_move, direction)
@@ -110,7 +114,16 @@ class StepperMotor:
     def move_continuously(self, direction, stop_event, pause_event):
         """
         Fait tourner le moteur en continu jusqu'à ce qu'un événement d'arrêt soit déclenché.
+
+        Args:
+            direction (bool): La direction de la rotation (True ou False).
+            stop_event (threading.Event): Événement pour arrêter le mouvement.
+            pause_event (threading.Event): Événement pour mettre en pause le mouvement.
         """
+        if not self.gpio_initialized:
+            print("Impossible de démarrer le mouvement continu. Les GPIO n'ont pas été initialisés correctement.")
+            return
+
         self.set_direction(direction)
         self.enable()
         
@@ -121,15 +134,37 @@ class StepperMotor:
                 GPIO.output(self.STEP_PIN, GPIO.LOW)
                 time.sleep(self.DELAY)
             else:
-                time.sleep(0.1)
+                time.sleep(0.1)  # Attendre un peu si en pause pour ne pas surcharger le CPU
         
         self.disable()
-    
-    def ramp_up(self, target_delay, direction, stop_event, pause_event, ramp_steps=100):
+        
+    def start_thread(self, target, args):
+        """Démarre un thread pour l'exécution du mouvement en continu."""
+        if self.current_thread and self.current_thread.is_alive():
+            print("Un thread est déjà en cours d'exécution pour ce moteur. Arrêt du thread précédent.")
+            # Le thread précédent s'arrêtera de lui-même si un stop_event est déjà défini
+        
+        self.current_thread = threading.Thread(target=target, args=args, daemon=True)
+        self.current_thread.start()
+
+    def ramp_up(self, direction, stop_event, pause_event, target_delay, ramp_steps=100):
         """
-        Démarre le moteur progressivement.
+        Démarre le moteur progressivement avec une rampe de montée.
+        
+        Args:
+            direction (bool): Direction de la rotation.
+            stop_event (threading.Event): Événement d'arrêt.
+            pause_event (threading.Event): Événement de pause.
+            target_delay (float): Le délai de la vitesse de croisière.
+            ramp_steps (int): Nombre de pas pour la rampe de montée.
         """
-        start_delay = 0.005 # Délai initial pour une vitesse très basse
+        if not self.gpio_initialized:
+            print("Impossible de démarrer le mouvement en rampe. Les GPIO n'ont pas été initialisés correctement.")
+            return
+
+        print("Démarrage du mouvement avec une rampe de montée.")
+        
+        start_delay = 0.01 # Délai de départ lent
         delay_step_size = (start_delay - target_delay) / ramp_steps
         
         self.set_direction(direction)
@@ -155,6 +190,11 @@ class StepperMotor:
         """
         Arrête le moteur progressivement en augmentant le délai entre les pas.
         """
+        if not self.gpio_initialized:
+            print("Les GPIO ne sont pas initialisés, le moteur est déjà désactivé.")
+            return
+
+        print("Démarrage de la rampe de descente...")
         current_delay = self.DELAY
         final_delay = 0.005  # Délai final pour un mouvement très lent
         
@@ -168,7 +208,6 @@ class StepperMotor:
                 
                 self.DELAY += delay_step_size
                 self.step(direction)
-            
-        # Arrêt final une fois le ralentissement terminé
-        self.disable()
-        stop_event.set()
+
+            self.disable()
+            print("Rampe de descente terminée. Moteur désactivé.")
