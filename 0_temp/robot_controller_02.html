@@ -50,7 +50,7 @@
             </div>
             <div class="text-center">
                 <span id="diameter-display" class="block text-2xl font-bold text-indigo-600">150</span>
-                <span class="text-sm text-gray-500">Diam_cm</span>
+                <span class="text-sm text-gray-500">cm</span>
             </div>
             <div class="text-center">
                 <span id="status-display" class="block text-sm font-semibold text-green-500">Prêt</span>
@@ -135,10 +135,10 @@
             const statusDisplay = document.getElementById('status-display');
             const speedDisplay = document.getElementById('speed-display');
             const angleDisplay = document.getElementById('angle-display');
-            const diameterDisplay = document.getElementById('diameter-display');
+            const diameterDisplay = document.getElementById('diameter-display'); // Nouveau
             const speedFill = document.getElementById('speed-fill');
             const angleBar = document.getElementById('angle-bar');
-            const diameterBar = document.getElementById('diameter-bar');
+            const diameterBar = document.getElementById('diameter-bar'); // Nouveau
             
             // Boutons de contrôle
             const forwardBtn = document.getElementById('forward-btn');
@@ -151,8 +151,8 @@
             const angleMinusBtn = document.getElementById('angle-minus-btn');
             const speedPlusBtn = document.getElementById('speed-plus-btn');
             const speedMinusBtn = document.getElementById('speed-minus-btn');
-            const diameterPlusBtn = document.getElementById('diameter-plus-btn');
-            const diameterMinusBtn = document.getElementById('diameter-minus-btn');
+            const diameterPlusBtn = document.getElementById('diameter-plus-btn'); // Nouveau
+            const diameterMinusBtn = document.getElementById('diameter-minus-btn'); // Nouveau
             
             const startRecordBtn = document.getElementById('start-record-btn');
             const stopRecordBtn = document.getElementById('stop-record-btn');
@@ -160,18 +160,20 @@
             // --- Variables d'état ---
             let currentSpeed = 3.0;
             let currentAngle = 180.0;
-            let currentDiameter = 150.0;
+            let currentDiameter = 150.0; // Nouveau
 
             // --- Constantes de configuration ---
             const MAX_SPEED = 10.0, MIN_SPEED = 0.5, SPEED_STEP = 0.5;
             const MAX_ANGLE = 360.0, MIN_ANGLE = 5.0, ANGLE_STEP = 5.0;
-            const MAX_DIAMETER = 300.0, MIN_DIAMETER = 0.0, DIAMETER_STEP = 10.0;
+            const MAX_DIAMETER = 300.0, MIN_DIAMETER = 0.0, DIAMETER_STEP = 10.0; // Nouveau
 
             function showStatus(message, type = 'success') {
                 statusDisplay.textContent = message;
-                statusDisplay.className = '';
+                statusDisplay.className = ''; // Reset classes
                 const typeClasses = {
-                    success: 'text-green-500', error: 'text-red-500', info: 'text-gray-500'
+                    success: 'text-green-500',
+                    error: 'text-red-500',
+                    info: 'text-gray-500'
                 };
                 statusDisplay.classList.add('block', 'text-sm', 'font-semibold', typeClasses[type] || typeClasses.info);
             }
@@ -179,10 +181,10 @@
             function updateUI() {
                 speedDisplay.textContent = currentSpeed.toFixed(1);
                 angleDisplay.textContent = currentAngle.toFixed(0);
-                diameterDisplay.textContent = currentDiameter.toFixed(0);
+                diameterDisplay.textContent = currentDiameter.toFixed(0); // Nouveau
                 speedFill.style.width = `${((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100}%`;
                 angleBar.style.width = `${((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100}%`;
-                diameterBar.style.width = `${(currentDiameter / MAX_DIAMETER) * 100}%`;
+                diameterBar.style.width = `${(currentDiameter / MAX_DIAMETER) * 100}%`; // Nouveau
             }
 
             async function sendCommand(command, params = {}) {
@@ -201,7 +203,7 @@
                 }
             }
             
-            // --- Événements des boutons de mouvement ---
+            // --- Événements des boutons ---
             const continuousCommands = {
                 'forward-btn': 'forward', 'backward-btn': 'backward',
                 'left-btn': 'turn_left', 'right-btn': 'turn_right'
@@ -212,41 +214,33 @@
                 btn.addEventListener('mouseup', () => sendCommand('stop'));
                 btn.addEventListener('mouseleave', () => sendCommand('stop'));
             }
+
             stopBtn.addEventListener('click', () => sendCommand('stop'));
 
-            // --- NOUVELLE GESTION SIMPLIFIÉE DES RÉGLAGES ---
-            speedPlusBtn.addEventListener('click', () => {
-                currentSpeed = Math.min(MAX_SPEED, currentSpeed + SPEED_STEP);
-                updateUI();
-                sendCommand('set_speed', { speed: currentSpeed });
-            });
-            speedMinusBtn.addEventListener('click', () => {
-                currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_STEP);
-                updateUI();
-                sendCommand('set_speed', { speed: currentSpeed });
-            });
+            // --- Gestion des réglages ---
+            const setupSettingControls = (plusBtnId, minusBtnId, valueKey, min, max, step, command) => {
+                const plusBtn = document.getElementById(plusBtnId);
+                const minusBtn = document.getElementById(minusBtnId);
+                let values = { currentSpeed, currentAngle, currentDiameter };
 
-            anglePlusBtn.addEventListener('click', () => {
-                currentAngle = Math.min(MAX_ANGLE, currentAngle + ANGLE_STEP);
-                updateUI();
-                sendCommand('set_angle', { angle: currentAngle });
-            });
-            angleMinusBtn.addEventListener('click', () => {
-                currentAngle = Math.max(MIN_ANGLE, currentAngle - ANGLE_STEP);
-                updateUI();
-                sendCommand('set_angle', { angle: currentAngle });
-            });
+                plusBtn.addEventListener('click', () => {
+                    values[valueKey] = Math.min(max, values[valueKey] + step);
+                    window[valueKey] = values[valueKey]; // Update global variable
+                    updateUI();
+                    sendCommand(command, { [command.split('_')[1]]: values[valueKey] });
+                });
 
-            diameterPlusBtn.addEventListener('click', () => {
-                currentDiameter = Math.min(MAX_DIAMETER, currentDiameter + DIAMETER_STEP);
-                updateUI();
-                sendCommand('set_diameter', { diameter: currentDiameter });
-            });
-            diameterMinusBtn.addEventListener('click', () => {
-                currentDiameter = Math.max(MIN_DIAMETER, currentDiameter - DIAMETER_STEP);
-                updateUI();
-                sendCommand('set_diameter', { diameter: currentDiameter });
-            });
+                minusBtn.addEventListener('click', () => {
+                    values[valueKey] = Math.max(min, values[valueKey] - step);
+                    window[valueKey] = values[valueKey]; // Update global variable
+                    updateUI();
+                    sendCommand(command, { [command.split('_')[1]]: values[valueKey] });
+                });
+            };
+
+            setupSettingControls('speed-plus-btn', 'speed-minus-btn', 'currentSpeed', MIN_SPEED, MAX_SPEED, SPEED_STEP, 'set_speed');
+            setupSettingControls('angle-plus-btn', 'angle-minus-btn', 'currentAngle', MIN_ANGLE, MAX_ANGLE, ANGLE_STEP, 'set_angle');
+            setupSettingControls('diameter-plus-btn', 'diameter-minus-btn', 'currentDiameter', MIN_DIAMETER, MAX_DIAMETER, DIAMETER_STEP, 'set_diameter'); // Nouveau
 
             // --- Enregistrement ---
             startRecordBtn.addEventListener('click', () => sendCommand('start_recording'));

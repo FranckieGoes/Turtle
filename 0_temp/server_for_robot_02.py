@@ -1,177 +1,181 @@
 # -*- coding: utf-8 -*-
-import RPi.GPIO as GPIO
-from flask import Flask, render_template, request, jsonify
+import pigpio
+from flask import Flask, request, jsonify, render_template
 from robot_controller_class import RobotController
+from database_manager import DatabaseManager
 import time
-import json
-import os
+import atexit
+import sys
 
-app = Flask(__name__)
-
-# Broches des moteurs
-motor_gauche_pins = {
-    'dir_pin': 27,
-    'step_pin': 17,
-    'en_pin': 22
-}
-motor_droit_pins = {
-    'dir_pin': 16,
-    'step_pin': 20,
-    'en_pin': 21
-}
-
-# Créez l'instance du contrôleur de robot
-# Un bloc try-except est utilisé pour gérer les erreurs d'initialisation GPIO
-# si le script est exécuté sur une machine sans broches physiques.
+# --- Initialisation de pigpio ---
 try:
-    robot = RobotController(motor_gauche_pins, motor_droit_pins)
+    pi = pigpio.pi()
+    if not pi.connected:
+        raise RuntimeError("Le démon pigpiod n'est pas en cours d'exécution.")
+except Exception as e:
+    print(f"Erreur de connexion à pigpio: {e}. Veuillez le démarrer avec 'sudo pigpiod'.")
+    sys.exit(1)
+
+# --- Initialisation de Flask et de la DB ---
+app = Flask(__name__)
+db_manager = DatabaseManager() # base de donnée
+
+# Définition des broches GPIO
+motor_gauche_pins = { 'dir_pin': 27, 'step_pin': 12, 'en_pin': 22 }
+motor_droit_pins = { 'dir_pin': 16, 'step_pin': 13, 'en_pin': 21 }
+
+# --- Initialisation du contrôleur de robot ---
+try:
+    robot = RobotController(pi, motor_gauche_pins, motor_droit_pins)
+    atexit.register(robot.cleanup)
 except Exception as e:
     print(f"Erreur lors de l'initialisation du RobotController: {e}")
-    robot = None # Définissez robot sur None pour gérer le cas d'échec
+    robot = None
 
-# Variables globales pour l'état du robot et l'enregistrement
-# Ces valeurs sont utilisées comme état par défaut et peuvent être mises à jour via l'API.
-current_angle = 5
-current_speed = 50
+# Variables globales pour l'état du robot
+current_angle = 180.0 # a changer également sur le html
+current_speed = 3
+
+# Variables pour l'enregistrement du parcours
+raw_path_log = []
 is_recording = False
-mowing_vectors = []
-MOWING_DATA_FILE = 'mowing_data.json'
 
-def load_mowing_vectors():
-    """Charge les vecteurs de tonte à partir d'un fichier JSON."""
-    if os.path.exists(MOWING_DATA_FILE):
-        try:
-            with open(MOWING_DATA_FILE, 'r') as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            print(f"Erreur lors du chargement des vecteurs : {e}")
-            return []
-    return []
+# --- Fonctions de traitement du parcours ---
+def process_raw_path_to_vectors(path_log):
+    if not path_log or len(path_log) < 2:
+        return []
 
-def save_mowing_vectors():
-    """Sauvegarde les vecteurs de tonte dans un fichier JSON."""
-    try:
-        with open(MOWING_DATA_FILE, 'w') as f:
-            json.dump(mowing_vectors, f, indent=4)
-        print(f"Vecteurs de tonte sauvegardés dans {MOWING_DATA_FILE}")
-    except IOError as e:
-        print(f"Erreur lors de la sauvegarde des vecteurs : {e}")
+    vectors = []
+    for i in range(len(path_log) - 1):
+        current_event = path_log[i]
+        next_event = path_log[i+1]
+        action = current_event.get("action")
 
-# Charge les vecteurs au démarrage du serveur
-mowing_vectors = load_mowing_vectors()
+        if action in ["forward", "backward"]:
+            duration = next_event["time"] - current_event["time"]
+            speed_kmh = current_event.get("speed", 0)
+            speed_cm_s = (speed_kmh * 100000) / 3600
+            distance_cm = speed_cm_s * duration
+            vectors.append({"distance": distance_cm, "relative_angle": 0})
 
-@app.route("/")
-def index():
-    """Route principale pour servir le fichier HTML de l'interface."""
-    return render_template("robot_controller.html")
+        elif action in ["turn_left", "turn_right"]:
+            angle = current_event.get("angle", 0)
+            relative_angle = -angle if action == "turn_left" else angle
+            vectors.append({"distance": 0, "relative_angle": relative_angle})
+            
+    return vectors
 
-@app.route("/mowing_zone")
-def mowing_zone():
-    """Route pour servir le fichier HTML de la visualisation de la zone de tonte."""
-    return render_template("mowing_zone.html")
-
-@app.route("/api/mowing_data", methods=["GET"])
-def get_mowing_data():
-    """API pour fournir les données de la zone de tonte."""
-    return jsonify(mowing_vectors)
-
-@app.route("/api/command", methods=["POST"])
-def handle_command():
-    global current_angle, current_speed, is_recording, mowing_vectors
-    
-    status = "ok"
-    try:
-        data = request.get_json()
-        command = data.get("command")
-        
-        # Mise à jour des variables globales si présentes dans le payload
-        if "angle" in data:
-            current_angle = int(data["angle"])
-        if "speed" in data:
-            current_speed = int(data["speed"])
-        
-        print(f"Commande reçue: {command}")
-        
-        if robot is None:
-            response_message = "Erreur: Le contrôleur de robot n'est pas initialisé."
-            status = "error"
+def merge_vectors(vectors):
+    if not vectors: return []
+    merged = []
+    accumulated_distance = 0
+    for vector in vectors:
+        if vector["relative_angle"] == 0 and vector["distance"] > 0:
+            accumulated_distance += vector["distance"]
         else:
-            if command == "forward":
-                print("Action: Avancer")
-                robot.move_forward(direction=True, speed_kmh=current_speed)
-                if is_recording:
-                    # Ajoute un vecteur de mouvement (distance, angle relatif 0)
-                    mowing_vectors.append({"distance": current_speed * 10, "relative_angle": 0})
-                response_message = "Avancer"
-            elif command == "backward":
-                print("Action: Reculer")
-                robot.move_backward(direction=False, speed_kmh=current_speed)
-                if is_recording:
-                    # Ajoute un vecteur de mouvement (distance, angle relatif 0)
-                    mowing_vectors.append({"distance": -current_speed * 10, "relative_angle": 0})
-                response_message = "Reculer"
-            elif command == "turn_left":
-                print(f"Action: Tourner à gauche de {current_angle}°")
-                robot.turn_left(direction=True, speed_kmh=current_speed, angle_deg=current_angle)
-                if is_recording:
-                    # Ajoute un vecteur de rotation (distance 0, angle relatif)
-                    mowing_vectors.append({"distance": 0, "relative_angle": -current_angle})
-                response_message = f"Tourner à gauche de {current_angle}°"
-            elif command == "turn_right":
-                print(f"Action: Tourner à droite de {current_angle}°")
-                robot.turn_right(direction=False, speed_kmh=current_speed, angle_deg=current_angle)
-                if is_recording:
-                    # Ajoute un vecteur de rotation (distance 0, angle relatif)
-                    mowing_vectors.append({"distance": 0, "relative_angle": current_angle})
-                response_message = f"Tourner à droite de {current_angle}°"
-            elif command == "stop":
-                print("Action: Arrêter le mouvement")
-                robot.stop()
-                response_message = "Arrêter le mouvement"
-            elif command == "pause":
-                print("Action: Pause")
-                robot.pause()
-                response_message = "Mettre en pause"
-            elif command == "resume":
-                print("Action: Reprendre")
-                robot.resume()
-                response_message = "Reprendre le mouvement"
-            elif command == "set_angle":
-                print(f"Nouvel angle défini à {current_angle}°")
-                response_message = f"Angle mis à jour à {current_angle}°"
-            elif command == "set_speed":
-                print(f"Nouvelle vitesse définie à {current_speed} KM/H")
-                # Appeler la nouvelle méthode pour mettre à jour la vitesse des moteurs
-                robot.update_speed(current_speed)
-                response_message = f"Vitesse mise à jour à {current_speed} KM/H"
-            elif command == "start_recording":
-                is_recording = True
-                mowing_vectors = []  # Réinitialiser la zone
-                print("Action: Démarrer l'enregistrement de la zone de tonte")
-                response_message = "Enregistrement démarré"
-            elif command == "stop_recording":
-                is_recording = False
-                save_mowing_vectors() # Sauvegarder les données
-                print("Action: Arrêter l'enregistrement de la zone de tonte et sauvegarder le parcours")
-                response_message = "Enregistrement arrêté et parcours sauvegardé"
-            else:
-                print(f"Commande inconnue: {command}")
-                response_message = f"Commande inconnue: {command}"
-                status = "error"
-                
-    except Exception as e:
-        print(f"Erreur lors du traitement de la commande : {e}")
-        response_message = f"Erreur du serveur : {e}"
-        status = "error"
+            if accumulated_distance > 0:
+                merged.append({"distance": accumulated_distance, "relative_angle": 0})
+                accumulated_distance = 0
+            if vector["relative_angle"] != 0 or vector["distance"] != 0:
+                merged.append(vector)
+    if accumulated_distance > 0:
+        merged.append({"distance": accumulated_distance, "relative_angle": 0})
+    return merged
 
-    response_data = {
-        "status": status,
-        "message": f"Commande '{command}' reçue et traitée. Action: {response_message}"
-    }
-    return jsonify(response_data)
+# --- Routes de l'API Flask ---
+@app.route('/')
+def home():
+    return render_template('robot_controller.html')
+
+@app.route('/api/command', methods=['POST'])
+def handle_command():
+    global current_angle, current_speed, is_recording
+
+    data = request.json
+    command = data.get('command')
+    params = data.get('params', {})
+    response_message = ""
+    status = "success"
+
+    print(f"Commande reçue: {command} avec les paramètres: {params}")
+
+    if not robot:
+        return jsonify({"status": "error", "message": "Le contrôleur de robot n'est pas initialisé."}), 500
+
+    # Log l'action si l'enregistrement est actif
+    if is_recording and command in ["forward", "backward", "turn_left", "turn_right", "stop"]:
+        log_entry = {"time": time.time(), "action": command}
+        if command in ["forward", "backward"]: log_entry["speed"] = current_speed
+        if command in ["turn_left", "turn_right"]: log_entry["angle"] = current_angle
+        raw_path_log.append(log_entry)
+
+    if command == 'forward':
+        robot.move_forward(current_speed)
+        response_message = f"Avancer à {current_speed} km/h"
+    elif command == 'backward':
+        robot.move_backward(current_speed)
+        response_message = f"Reculer à {current_speed} km/h"
+    elif command == 'turn_left':
+        #robot.turn_on_spot_left(current_speed, current_angle)
+        robot.select_type_rotate(angle_IHM = current_angle, diametre_IHM = 40, direction_IHM = "left", vitesse_IHM = current_speed)
+        response_message = f"Tourner à gauche de {current_angle}°"
+    elif command == 'turn_right':
+        #robot.turn_on_spot_right(current_speed, current_angle)
+        #robot.make_turn(current_speed, 53, current_angle)
+        robot.select_type_rotate(angle_IHM = current_angle, diametre_IHM = 50, direction_IHM = "right", vitesse_IHM = current_speed)
+        response_message = f"Tourner à droite de {current_angle}°"
+    elif command == 'stop':
+        robot.stop()
+        response_message = "Arrêt du robot"
+    elif command == 'set_angle':
+        current_angle = float(params.get('angle', current_angle))
+        response_message = f"Angle réglé sur {current_angle}°"
+    elif command == 'set_speed':
+        current_speed = float(params.get('speed', current_speed))
+        robot.update_speed(current_speed)
+        response_message = f"Vitesse réglée sur {current_speed} km/h"
+    elif command == 'start_recording':
+        is_recording = True
+        raw_path_log.clear()
+        raw_path_log.append({"action": "start", "time": time.time()})
+        response_message = "Enregistrement démarré"
+    elif command == 'stop_recording':
+        is_recording = False
+        raw_path_log.append({"action": "end", "time": time.time()})
+        zone_name = params.get('zone_name')
+        if not zone_name:
+            return jsonify({"status": "error", "message": "Le nom de la zone est requis."})
+        
+        basic_vectors = process_raw_path_to_vectors(raw_path_log)
+        final_vectors = merge_vectors(basic_vectors)
+        
+        if db_manager.save_zone(zone_name, final_vectors):
+            response_message = f"Zone '{zone_name}' enregistrée avec succès."
+        else:
+            status = "error"
+            response_message = f"Erreur: La zone '{zone_name}' existe déjà."
+    else:
+        status = "error"
+        response_message = "Commande inconnue"
+
+    return jsonify({"status": status, "message": response_message})
+
+@app.route('/zones')
+def list_zones():
+    all_zones = db_manager.get_all_zones()
+    return render_template('zones_list.html', zones=all_zones)
+
+@app.route('/view_zone')
+def view_zone_page():
+    return render_template('mowing_zone.html')
+
+@app.route('/api/zone/<string:zone_name>', methods=['GET'])
+def get_zone_data(zone_name):
+    zone_vectors = db_manager.get_zone_by_name(zone_name)
+    if zone_vectors:
+        return jsonify(zone_vectors)
+    else:
+        return jsonify({"error": "Zone non trouvée"}), 404
 
 if __name__ == '__main__':
-    # La ligne ci-dessous est pour le développement, pour le déploiement sur Raspberry Pi,
-    # il est préférable d'utiliser un serveur WSGI comme Gunicorn
-    # app.run(host='0.0.0.0', port=5000, debug=True)
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)

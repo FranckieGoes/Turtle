@@ -53,115 +53,118 @@
             const loadingIndicator = document.getElementById('loadingIndicator');
             const totalDistanceDisplay = document.getElementById('totalDistance');
             const mowingTimeDisplay = document.getElementById('mowingTime');
+            const pageTitle = document.querySelector('h1');
 
-            // Données de parcours simulées (remplacer par les données du backend)
-            // Chaque objet représente un segment de déplacement
-            // distance: en unités arbitraires (par exemple, 1 unité = 1 cm)
-            // relative_angle: l'angle de rotation par rapport à la direction précédente, en degrés
-            const sampleVectors = [
-                { distance: 100, relative_angle: 0 },
-                { distance: 50, relative_angle: 90 },
-                { distance: 150, relative_angle: 0 },
-                { distance: 50, relative_angle: 90 },
-                { distance: 100, relative_angle: 0 },
-                { distance: 50, relative_angle: 90 },
-                { distance: 150, relative_angle: 0 },
-                { distance: 50, relative_angle: 90 },
-            ];
+            const DISTANCE_TO_PIXEL_RATIO = 1;
 
-            // Constantes pour le rendu visuel
-            const DISTANCE_TO_PIXEL_RATIO = 1; // 1 unité de distance = 1 pixel sur le canvas
-            const FADE_IN_TIME = 1000; // Durée du fondu d'apparition en ms
-
-            /**
-             * Dessine le chemin de tonte sur le canvas.
-             * @param {Array<Object>} vectors - La liste des vecteurs de mouvement.
-             */
             const drawPath = (vectors) => {
+                if (!vectors || vectors.length === 0) {
+                    loadingIndicator.innerHTML = '<p class="text-red-600 font-semibold">Impossible de charger les données du tracé.</p>';
+                    return;
+                }
                 loadingIndicator.style.display = 'none';
-
-                // Nettoyer le canvas
+                
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // Paramètres de dessin pour le chemin
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
-                // Position et angle de départ (au centre, pointant vers le haut)
-                let currentX = canvas.width / 2;
-                let currentY = canvas.height / 2;
-                let currentAngle = -90; // Le "haut" du canvas, en degrés
+                // Centrage et mise à l'échelle automatique du tracé
+                let minX = 0, maxX = 0, minY = 0, maxY = 0;
+                let x = 0, y = 0, angle = -90;
+                const pathPoints = [{x: 0, y: 0}];
 
-                // Démarrer le tracé du chemin
+                vectors.forEach(v => {
+                    angle += v.relative_angle;
+                    const angleRad = angle * Math.PI / 180;
+                    x += v.distance * Math.cos(angleRad);
+                    y += v.distance * Math.sin(angleRad);
+                    pathPoints.push({x: x, y: y});
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                });
+
+                const pathWidth = maxX - minX;
+                const pathHeight = maxY - minY;
+                const pathCenterX = (minX + maxX) / 2;
+                const pathCenterY = (minY + maxY) / 2;
+
+                const scaleX = (canvas.width * 0.9) / pathWidth;
+                const scaleY = (canvas.height * 0.9) / pathHeight;
+                const scale = Math.min(scaleX, scaleY);
+
+                const startX = (canvas.width / 2) - (pathCenterX * scale);
+                const startY = (canvas.height / 2) - (pathCenterY * scale);
+
                 ctx.beginPath();
-                ctx.moveTo(currentX, currentY);
+                ctx.moveTo(startX, startY);
 
-                vectors.forEach(vector => {
-                    const distance = vector.distance * DISTANCE_TO_PIXEL_RATIO;
-                    const relativeAngle = vector.relative_angle;
-
-                    // Mettre à jour l'angle absolu
-                    currentAngle += relativeAngle;
-                    // Conversion en radians, en ajustant pour que 0° soit vers la droite (Math.cos/sin) et -90° vers le haut
-                    const angleRad = (currentAngle) * Math.PI / 180;
-
-                    const newX = currentX + distance * Math.cos(angleRad);
-                    const newY = currentY + distance * Math.sin(angleRad);
-                    
-                    ctx.lineTo(newX, newY);
-                    currentX = newX;
-                    currentY = newY;
+                pathPoints.slice(1).forEach(point => {
+                    ctx.lineTo(startX + point.x * scale, startY + point.y * scale);
                 });
                 
-                // Dessiner le chemin
                 ctx.stroke();
                 
-                // Dessiner un point de départ
+                // Points de départ et d'arrivée
                 ctx.beginPath();
-                ctx.arc(canvas.width / 2, canvas.height / 2, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = '#10b981'; // Vert
+                ctx.arc(startX, startY, 8, 0, 2 * Math.PI);
+                ctx.fillStyle = '#10b981';
                 ctx.fill();
 
-                // Dessiner un point d'arrivée
                 ctx.beginPath();
-                ctx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ef4444'; // Rouge
+                ctx.arc(startX + x * scale, startY + y * scale, 8, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ef4444';
                 ctx.fill();
             };
-
-            /**
-             * Calcule les statistiques de parcours et les affiche.
-             * @param {Array<Object>} vectors - La liste des vecteurs de mouvement.
-             */
+            
             const updateStats = (vectors) => {
-                const totalDistance = vectors.reduce((sum, vector) => sum + vector.distance, 0);
-                const estimatedMowingTime = totalDistance / 1000 * 2; // Exemple: 2 minutes par mètre
-                
-                totalDistanceDisplay.textContent = `${(totalDistance / 100).toFixed(2)} m`;
-                mowingTimeDisplay.textContent = `${estimatedMowingTime.toFixed(0)} min`;
+                const totalDistanceCm = vectors.reduce((sum, vector) => sum + vector.distance, 0);
+                const totalDistanceM = (totalDistanceCm / 100).toFixed(2);
+                totalDistanceDisplay.textContent = `${totalDistanceM} m`;
             };
 
-            /**
-             * Rend le canvas réactif aux changements de taille de la fenêtre.
-             */
-            const resizeCanvas = () => {
+            const resizeCanvas = (vectors) => {
                 const parent = canvas.parentElement;
                 canvas.width = parent.clientWidth;
                 canvas.height = parent.clientHeight;
-                drawPath(sampleVectors);
+                if (vectors && vectors.length > 0) {
+                   drawPath(vectors);
+                }
             };
 
-            // Événement pour gérer le redimensionnement de la fenêtre
-            window.addEventListener('resize', resizeCanvas);
+            const fetchAndDrawZone = async (zoneName) => {
+                loadingIndicator.style.display = 'flex';
+                pageTitle.textContent = `Visualisation de: ${zoneName}`;
+                try {
+                    const response = await fetch(`/api/zone/${zoneName}`);
+                    if (!response.ok) throw new Error('Réponse du serveur non valide');
+                    
+                    const vectors = await response.json();
+                    
+                    window.addEventListener('resize', () => resizeCanvas(vectors));
+                    resizeCanvas(vectors);
+                    updateStats(vectors);
 
-            // Simulation du chargement et du dessin initial
-            loadingIndicator.style.display = 'flex';
-            setTimeout(() => {
-                resizeCanvas();
-                updateStats(sampleVectors);
-            }, 500); // Délai pour simuler le chargement des données
+                } catch (error) {
+                    console.error("Erreur lors du chargement de la zone:", error);
+                    loadingIndicator.innerHTML = '<p class="text-red-600 font-semibold">Impossible de charger les données du tracé.</p>';
+                }
+            };
+            
+            // --- Point d'entrée ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const zoneName = urlParams.get('name');
+
+            if (zoneName) {
+                fetchAndDrawZone(zoneName);
+            } else {
+                pageTitle.textContent = 'Erreur';
+                loadingIndicator.style.display = 'flex';
+                loadingIndicator.innerHTML = '<p class="text-red-600 font-semibold">Aucun nom de zone spécifié dans l\'URL.</p>';
+            }
         });
     </script>
 </body>

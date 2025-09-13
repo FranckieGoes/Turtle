@@ -102,91 +102,16 @@ class RobotController:
         """Déplace le robot vers l'arrière avec une accélération progressive."""
         print(f"Déplacement arrière demandé à {speed_kmh} km/h.")
         self._start_movement_with_ramp(speed_kmh, 'backward', 'forward')
-    
-    def select_type_rotate(self, angle_IHM, diametre_IHM, direction_IHM, vitesse_IHM):
-        if diametre_IHM < self.WHEELBASE_CM:
-            if direction_IHM == "droite":
-                self.turn_on_spot_right(vitesse_IHM, angle_IHM)
-            else:
-                self.turn_on_spot_left(vitesse_IHM, angle_IHM)
-        else:
-            self.make_turn(vitesse_IHM, diametre_IHM, angle_IHM, direction_IHM)  
 
     def turn_on_spot_right(self, speed_kmh, angle_deg):
         """Fait pivoter le robot sur place à droite avec une accélération progressive."""
         print(f"Rotation droite demandée de {angle_deg} degrés.")
-
         self._start_movement_with_ramp(speed_kmh, 'forward', 'forward')
 
     def turn_on_spot_left(self, speed_kmh, angle_deg):
         """Fait pivoter le robot sur place à gauche avec une accélération progressive."""
         print(f"Rotation gauche demandée de {angle_deg} degrés.")
         self._start_movement_with_ramp(speed_kmh, 'backward', 'backward')
-    
-    # --- NOUVELLE FONCTION ---
-    def make_turn(self, speed_kmh, diameter_cm, angle_deg, direction_mt):
-        """
-        Fait tourner le robot en suivant une courbe d'un diamètre et d'un angle donnés.
-        Un angle positif tourne à droite, un angle négatif tourne à gauche.
-        """
-        print(f"Virage demandé: {angle_deg}° sur un diamètre de {diameter_cm} cm à {speed_kmh} km/h.")
-        if diameter_cm < self.WHEELBASE_CM:
-            print(f"Erreur: Le diamètre de virage ({diameter_cm} cm) ne peut pas être inférieur à l'empattement ({self.WHEELBASE_CM} cm).")
-            return
-
-        # 1. Calcul des rayons pour chaque roue
-        turn_radius_cm = diameter_cm / 2.0
-        radius_outer = turn_radius_cm + (self.WHEELBASE_CM / 2.0)
-        radius_inner = turn_radius_cm - (self.WHEELBASE_CM / 2.0)
-
-        # 2. Calcul du ratio des vitesses
-        if radius_outer == 0: return # Évite la division par zéro
-        speed_ratio = radius_inner / radius_outer
-        
-        speed_outer_kmh = speed_kmh
-        speed_inner_kmh = speed_kmh * speed_ratio
-
-        # 3. Calcul de la durée du virage
-        angle_rad = math.radians(abs(angle_deg))
-        distance_outer_cm = radius_outer * angle_rad
-        speed_outer_cm_s = (speed_outer_kmh * 100000) / 3600
-        if speed_outer_cm_s == 0: return
-        turn_duration_s = distance_outer_cm / speed_outer_cm_s
-
-        # 4. Attribution des vitesses aux moteurs
-        if direction_mt == "right": # Virage à droite
-            print(f"Virage à droite. Moteur Droit (intérieur): {speed_inner_kmh:.2f} km/h, Moteur Gauche (extérieur): {speed_outer_kmh:.2f} km/h.")
-            delay_gauche = self._calculate_delay(speed_outer_kmh) # Extérieur
-            delay_droit = self._calculate_delay(speed_inner_kmh)  # Intérieur
-            dir_gauche, dir_droit = 'forward', 'backward'
-        else: # Virage à gauche
-            print(f"Virage à gauche. Moteur Gauche (intérieur): {speed_inner_kmh:.2f} km/h, Moteur Droit (extérieur): {speed_outer_kmh:.2f} km/h.")
-            delay_gauche = self._calculate_delay(speed_inner_kmh)  # Intérieur
-            delay_droit = self._calculate_delay(speed_outer_kmh) # Extérieur
-            dir_gauche, dir_droit = 'forward', 'backward'
-            
-        # 5. Exécution du virage dans un thread
-        def _execute_turn():
-            # Mise à jour directe des vitesses sans rampe pour ce mouvement précis
-            self.motor_gauche.set_speed(delay_gauche)
-            self.motor_droit.set_speed(delay_droit)
-            
-            # Démarrage des moteurs
-            move_thread = threading.Thread(target=self._move_both_motors, args=(dir_gauche, dir_droit))
-            move_thread.start()
-
-            # Attendre la fin du virage
-            time.sleep(turn_duration_s)
-
-            # Arrêter les moteurs (version abrupte pour la précision du virage)
-            self.stop_event.set()
-            move_thread.join()
-            print(f"Virage de {angle_deg}° terminé.")
-
-        self.stop() # S'assurer que le robot est arrêté avant
-        self.stop_event.clear()
-        self.current_thread = threading.Thread(target=_execute_turn)
-        self.current_thread.start()
             
     def _move_both_motors(self, direction_gauche, direction_droit):
         """Fonction cible pour les threads de mouvement."""

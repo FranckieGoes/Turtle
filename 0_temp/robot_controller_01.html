@@ -39,18 +39,15 @@
     <div class="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10 w-full max-w-lg space-y-8">
         <h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-800">Contrôle du Robot</h1>
         
+        <!-- Affichage de l'état du robot -->
         <div class="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-inner">
             <div class="text-center">
-                <span id="speed-display" class="block text-2xl font-bold text-indigo-600">3.0</span>
+                <span id="speed-display" class="block text-2xl font-bold text-indigo-600">5.0</span>
                 <span class="text-sm text-gray-500">km/h</span>
             </div>
             <div class="text-center">
-                <span id="angle-display" class="block text-2xl font-bold text-indigo-600">180</span>
+                <span id="angle-display" class="block text-2xl font-bold text-indigo-600">5</span>
                 <span class="text-sm text-gray-500">degrés</span>
-            </div>
-            <div class="text-center">
-                <span id="diameter-display" class="block text-2xl font-bold text-indigo-600">150</span>
-                <span class="text-sm text-gray-500">Diam_cm</span>
             </div>
             <div class="text-center">
                 <span id="status-display" class="block text-sm font-semibold text-green-500">Prêt</span>
@@ -58,6 +55,7 @@
             </div>
         </div>
 
+        <!-- Contrôles de direction -->
         <div class="grid grid-cols-3 gap-4">
             <div></div>
             <button id="forward-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition duration-200 ease-in-out transform hover:scale-105">
@@ -90,18 +88,10 @@
             <div></div>
         </div>
         
+        <!-- Contrôles de vitesse et d'angle -->
         <div class="space-y-6">
             <div class="flex items-center space-x-4">
-                <span class="text-lg font-semibold w-20">Vitesse</span>
-                <button id="speed-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">-</button>
-                <div class="w-full speed-bar">
-                    <div id="speed-fill" class="speed-fill" style="width: 30%;"></div>
-                </div>
-                <button id="speed-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">+</button>
-            </div>
-            
-            <div class="flex items-center space-x-4">
-                <span class="text-lg font-semibold w-20">Angle</span>
+                <span class="text-lg font-semibold">Angle</span>
                 <button id="angle-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">-</button>
                 <div class="w-full h-2 bg-gray-300 rounded-full overflow-hidden">
                     <div id="angle-bar" class="bg-indigo-600 h-full transition-all duration-200 ease-in-out" style="width: 50%;"></div>
@@ -110,15 +100,16 @@
             </div>
 
             <div class="flex items-center space-x-4">
-                <span class="text-lg font-semibold w-20">Diamètre</span>
-                <button id="diameter-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">-</button>
-                <div class="w-full h-2 bg-gray-300 rounded-full overflow-hidden">
-                    <div id="diameter-bar" class="bg-indigo-600 h-full transition-all duration-200 ease-in-out" style="width: 50%;"></div>
+                <span class="text-lg font-semibold">Vitesse</span>
+                <button id="speed-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">-</button>
+                <div class="w-full speed-bar">
+                    <div id="speed-fill" class="speed-fill" style="width: 50%;"></div>
                 </div>
-                <button id="diameter-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">+</button>
+                <button id="speed-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition duration-200">+</button>
             </div>
         </div>
 
+        <!-- Boutons d'enregistrement -->
         <div class="flex justify-around items-center space-x-4 pt-4">
             <button id="start-record-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-200 ease-in-out transform hover:scale-105">
                 Démarrer Enregistrement
@@ -135,10 +126,8 @@
             const statusDisplay = document.getElementById('status-display');
             const speedDisplay = document.getElementById('speed-display');
             const angleDisplay = document.getElementById('angle-display');
-            const diameterDisplay = document.getElementById('diameter-display');
             const speedFill = document.getElementById('speed-fill');
             const angleBar = document.getElementById('angle-bar');
-            const diameterBar = document.getElementById('diameter-bar');
             
             // Boutons de contrôle
             const forwardBtn = document.getElementById('forward-btn');
@@ -151,111 +140,111 @@
             const angleMinusBtn = document.getElementById('angle-minus-btn');
             const speedPlusBtn = document.getElementById('speed-plus-btn');
             const speedMinusBtn = document.getElementById('speed-minus-btn');
-            const diameterPlusBtn = document.getElementById('diameter-plus-btn');
-            const diameterMinusBtn = document.getElementById('diameter-minus-btn');
             
             const startRecordBtn = document.getElementById('start-record-btn');
             const stopRecordBtn = document.getElementById('stop-record-btn');
 
-            // --- Variables d'état ---
             let currentSpeed = 3.0;
             let currentAngle = 180.0;
-            let currentDiameter = 150.0;
-
-            // --- Constantes de configuration ---
-            const MAX_SPEED = 10.0, MIN_SPEED = 0.5, SPEED_STEP = 0.5;
-            const MAX_ANGLE = 360.0, MIN_ANGLE = 5.0, ANGLE_STEP = 5.0;
-            const MAX_DIAMETER = 300.0, MIN_DIAMETER = 0.0, DIAMETER_STEP = 10.0;
+            const MAX_SPEED = 10.0;
+            const MIN_SPEED = 0.5;
+            const SPEED_STEP = 0.5;
+            const MAX_ANGLE = 360.0;
+            const MIN_ANGLE = 0.0;
+            const ANGLE_STEP = 5.0;
 
             function showStatus(message, type = 'success') {
                 statusDisplay.textContent = message;
                 statusDisplay.className = '';
-                const typeClasses = {
-                    success: 'text-green-500', error: 'text-red-500', info: 'text-gray-500'
-                };
-                statusDisplay.classList.add('block', 'text-sm', 'font-semibold', typeClasses[type] || typeClasses.info);
+                if (type === 'success') {
+                    statusDisplay.classList.add('block', 'text-sm', 'font-semibold', 'text-green-500');
+                } else if (type === 'error') {
+                    statusDisplay.classList.add('block', 'text-sm', 'font-semibold', 'text-red-500');
+                } else {
+                    statusDisplay.classList.add('block', 'text-sm', 'font-semibold', 'text-gray-500');
+                }
             }
 
             function updateUI() {
                 speedDisplay.textContent = currentSpeed.toFixed(1);
                 angleDisplay.textContent = currentAngle.toFixed(0);
-                diameterDisplay.textContent = currentDiameter.toFixed(0);
-                speedFill.style.width = `${((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100}%`;
-                angleBar.style.width = `${((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100}%`;
-                diameterBar.style.width = `${(currentDiameter / MAX_DIAMETER) * 100}%`;
+                speedFill.style.width = `${(currentSpeed / MAX_SPEED) * 100}%`;
+                angleBar.style.width = `${(currentAngle / MAX_ANGLE) * 100}%`;
             }
 
             async function sendCommand(command, params = {}) {
-                showStatus('Envoi...', 'info');
+                showStatus('Envoi de la commande...', 'info');
                 try {
                     const response = await fetch(API_URL, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
                         body: JSON.stringify({ command, params }),
                     });
+
                     const data = await response.json();
-                    showStatus(data.message, response.ok ? 'success' : 'error');
+                    if (response.ok) {
+                        showStatus(data.message, 'success');
+                    } else {
+                        showStatus(`Erreur: ${data.message || 'La commande a échoué.'}`, 'error');
+                    }
                 } catch (error) {
-                    showStatus(`Erreur réseau`, 'error');
+                    showStatus(`Erreur de connexion: ${error.message}`, 'error');
                     console.error('Erreur de requête:', error);
                 }
             }
             
-            // --- Événements des boutons de mouvement ---
-            const continuousCommands = {
-                'forward-btn': 'forward', 'backward-btn': 'backward',
-                'left-btn': 'turn_left', 'right-btn': 'turn_right'
-            };
-            for (const [btnId, cmd] of Object.entries(continuousCommands)) {
-                const btn = document.getElementById(btnId);
-                btn.addEventListener('mousedown', () => sendCommand(cmd));
-                btn.addEventListener('mouseup', () => sendCommand('stop'));
-                btn.addEventListener('mouseleave', () => sendCommand('stop'));
-            }
-            stopBtn.addEventListener('click', () => sendCommand('stop'));
+            // Événements des boutons
+            forwardBtn.addEventListener('mousedown', () => sendCommand('forward'));
+            forwardBtn.addEventListener('mouseup', () => sendCommand('stop'));
+            forwardBtn.addEventListener('mouseleave', () => sendCommand('stop'));
 
-            // --- NOUVELLE GESTION SIMPLIFIÉE DES RÉGLAGES ---
-            speedPlusBtn.addEventListener('click', () => {
-                currentSpeed = Math.min(MAX_SPEED, currentSpeed + SPEED_STEP);
-                updateUI();
-                sendCommand('set_speed', { speed: currentSpeed });
-            });
-            speedMinusBtn.addEventListener('click', () => {
-                currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_STEP);
-                updateUI();
-                sendCommand('set_speed', { speed: currentSpeed });
-            });
+            backwardBtn.addEventListener('mousedown', () => sendCommand('backward'));
+            backwardBtn.addEventListener('mouseup', () => sendCommand('stop'));
+            backwardBtn.addEventListener('mouseleave', () => sendCommand('stop'));
+
+            leftBtn.addEventListener('mousedown', () => sendCommand('turn_left'));
+            leftBtn.addEventListener('mouseup', () => sendCommand('stop'));
+            leftBtn.addEventListener('mouseleave', () => sendCommand('stop'));
+
+            rightBtn.addEventListener('mousedown', () => sendCommand('turn_right'));
+            rightBtn.addEventListener('mouseup', () => sendCommand('stop'));
+            rightBtn.addEventListener('mouseleave', () => sendCommand('stop'));
+
+            stopBtn.addEventListener('click', () => sendCommand('stop'));
 
             anglePlusBtn.addEventListener('click', () => {
                 currentAngle = Math.min(MAX_ANGLE, currentAngle + ANGLE_STEP);
                 updateUI();
                 sendCommand('set_angle', { angle: currentAngle });
             });
+
             angleMinusBtn.addEventListener('click', () => {
                 currentAngle = Math.max(MIN_ANGLE, currentAngle - ANGLE_STEP);
                 updateUI();
                 sendCommand('set_angle', { angle: currentAngle });
             });
 
-            diameterPlusBtn.addEventListener('click', () => {
-                currentDiameter = Math.min(MAX_DIAMETER, currentDiameter + DIAMETER_STEP);
+            speedPlusBtn.addEventListener('click', () => {
+                currentSpeed = Math.min(MAX_SPEED, currentSpeed + SPEED_STEP);
                 updateUI();
-                sendCommand('set_diameter', { diameter: currentDiameter });
-            });
-            diameterMinusBtn.addEventListener('click', () => {
-                currentDiameter = Math.max(MIN_DIAMETER, currentDiameter - DIAMETER_STEP);
-                updateUI();
-                sendCommand('set_diameter', { diameter: currentDiameter });
+                sendCommand('set_speed', { speed: currentSpeed });
             });
 
-            // --- Enregistrement ---
+            speedMinusBtn.addEventListener('click', () => {
+                currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_STEP);
+                updateUI();
+                sendCommand('set_speed', { speed: currentSpeed });
+            });
+
             startRecordBtn.addEventListener('click', () => sendCommand('start_recording'));
             stopRecordBtn.addEventListener('click', () => {
                 const zoneName = prompt("Veuillez entrer un nom pour cette zone :");
                 if (zoneName && zoneName.trim() !== "") {
                     sendCommand('stop_recording', { zone_name: zoneName.trim() });
                 } else {
-                    showStatus("Enregistrement annulé.", "info");
+                    showStatus("L'enregistrement a été annulé car aucun nom n'a été fourni.", "error");
                 }
             });
 

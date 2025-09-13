@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zones de Tonte Enregistrées</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl mx-auto">
+        <h1 class="text-3xl sm:text-4xl font-bold mb-6 text-indigo-700 text-center">Mes Zones de Tonte</h1>
+        
+        <div id="zones-list" class="space-y-3">
+            {% if zones %}
+                <ul class="divide-y divide-gray-200">
+                    {% for zone in zones %}
+                    <li class="py-4 flex justify-between items-center">
+                        <span class="text-lg text-gray-800 font-medium">{{ zone.name }}</span>
+                        <a href="/view_zone?name={{ zone.name }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition-transform transform hover:scale-105">
+                            Visualiser
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-center text-gray-500 py-8">Aucune zone n'a été enregistrée pour le moment.</p>
+            {% endif %}
+        </div>
+         <div class="mt-8 text-center">
+            <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">
+                &larr; Retour au panneau de contrôle
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>
