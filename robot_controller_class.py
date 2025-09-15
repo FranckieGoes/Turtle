@@ -20,9 +20,9 @@ class RobotController:
     MAX_SPEED_KMH = 10.0
     
     # --- Nouvelles constantes pour les rampes de vitesse ---
-    MIN_SPEED_KMH = 0.3      # Vitesse minimale pour démarrer/arrêter en douceur
-    ACCEL_DURATION_S = 0.5   # Durée en secondes pour l'accélération/décélération
-    RAMP_STEPS = 20          # Nombre d'étapes dans la rampe
+    MIN_SPEED_KMH = 0.3
+    ACCEL_DURATION_S = 0.5
+    RAMP_STEPS = 20
     
     def __init__(self, pi, motor_gauche_pins, motor_droit_pins):
         print("Initialisation du RobotController avec pigpio...")
@@ -39,7 +39,7 @@ class RobotController:
         self.pause_event = threading.Event()
         
         self.current_thread = None
-        self.ramp_thread = None # Thread pour gérer l'accélération
+        self.ramp_thread = None
         self.current_speed_kmh = 0.0
         
         self.speed_converter = SpeedConverter(steps_per_rev=400, wheel_diameter_mm=61.0)
@@ -49,201 +49,176 @@ class RobotController:
         print("RobotController initialisé. Prêt à recevoir des commandes.")
 
     def _calculate_delay(self, speed_kmh):
-        if speed_kmh <= 0:
-            return float('inf')
+        if speed_kmh <= 0: return float('inf')
         steps_per_sec = self.speed_converter.convert_kmh_to_steps_per_sec(speed_kmh)
-        if steps_per_sec == 0:
-            return float('inf')
+        if steps_per_sec == 0: return float('inf')
         return 1.0 / (2 * steps_per_sec)
 
     def _start_thread(self, target_func, args_tuple):
-        """Démarre un nouveau thread de mouvement, en s'assurant que le précédent est arrêté."""
         self.stop() 
         self.stop_event.clear()
         self.pause_event.clear()
-        
         self.current_thread = threading.Thread(target=target_func, args=args_tuple)
         self.current_thread.start()
         
     def _ramp_speed(self, start_speed, end_speed, duration):
-        """
-        Fonction de rampe de vitesse (bloquante).
-        Fait varier la vitesse de `start_speed` à `end_speed` sur `duration` secondes.
-        """
         delta_speed = end_speed - start_speed
         sleep_interval = duration / self.RAMP_STEPS
-        
         for i in range(self.RAMP_STEPS + 1):
             step_speed = start_speed + (delta_speed * i / self.RAMP_STEPS)
             self.update_speed(step_speed)
             time.sleep(sleep_interval)
 
     def _start_movement_with_ramp(self, speed_kmh, direction_gauche, direction_droit):
-        """
-        Commence un mouvement en démarrant à vitesse minimale puis en accélérant.
-        """
-        # D'abord, on arrête tout mouvement précédent.
         self.stop()
-        
-        # On démarre les moteurs à la vitesse minimale
         self.update_speed(self.MIN_SPEED_KMH)
         self._start_thread(target_func=self._move_both_motors, args_tuple=(direction_gauche, direction_droit))
-        
-        # Ensuite, on lance l'accélération dans un thread séparé pour ne pas bloquer
         self.ramp_thread = threading.Thread(target=self._ramp_speed, args=(self.MIN_SPEED_KMH, speed_kmh, self.ACCEL_DURATION_S))
         self.ramp_thread.start()
 
     def move_forward(self, speed_kmh):
-        """Déplace le robot vers l'avant avec une accélération progressive."""
         print(f"Déplacement avant demandé à {speed_kmh} km/h.")
         self._start_movement_with_ramp(speed_kmh, 'forward', 'backward')
 
     def move_backward(self, speed_kmh):
-        """Déplace le robot vers l'arrière avec une accélération progressive."""
         print(f"Déplacement arrière demandé à {speed_kmh} km/h.")
         self._start_movement_with_ramp(speed_kmh, 'backward', 'forward')
     
     def select_type_rotate(self, angle_IHM, diametre_IHM, direction_IHM, vitesse_IHM):
         if diametre_IHM < self.WHEELBASE_CM:
-            if direction_IHM == "droite":
-                self.turn_on_spot_right(vitesse_IHM, angle_IHM)
-            else:
-                self.turn_on_spot_left(vitesse_IHM, angle_IHM)
+            angle_deg = -angle_IHM if direction_IHM == "left" else angle_IHM
+            self.turn_on_spot_right(vitesse_IHM, angle_deg)
         else:
-            self.make_turn(vitesse_IHM, diametre_IHM, angle_IHM, direction_IHM)  
+            angle_deg = -angle_IHM if direction_IHM == "left" else angle_IHM
+            self.make_turn(vitesse_IHM, diametre_IHM, angle_deg)  
 
     def turn_on_spot_right(self, speed_kmh, angle_deg):
-        """Fait pivoter le robot sur place à droite avec une accélération progressive."""
         print(f"Rotation droite demandée de {angle_deg} degrés.")
-
         self._start_movement_with_ramp(speed_kmh, 'forward', 'forward')
 
     def turn_on_spot_left(self, speed_kmh, angle_deg):
-        """Fait pivoter le robot sur place à gauche avec une accélération progressive."""
         print(f"Rotation gauche demandée de {angle_deg} degrés.")
         self._start_movement_with_ramp(speed_kmh, 'backward', 'backward')
     
-    # --- NOUVELLE FONCTION ---
-    def make_turn(self, speed_kmh, diameter_cm, angle_deg, direction_mt):
-        """
-        Fait tourner le robot en suivant une courbe d'un diamètre et d'un angle donnés.
-        Un angle positif tourne à droite, un angle négatif tourne à gauche.
-        """
+    def make_turn(self, speed_kmh, diameter_cm, angle_deg):
         print(f"Virage demandé: {angle_deg}° sur un diamètre de {diameter_cm} cm à {speed_kmh} km/h.")
         if diameter_cm < self.WHEELBASE_CM:
-            print(f"Erreur: Le diamètre de virage ({diameter_cm} cm) ne peut pas être inférieur à l'empattement ({self.WHEELBASE_CM} cm).")
+            print(f"Erreur: Diamètre ({diameter_cm} cm) inférieur à l'empattement ({self.WHEELBASE_CM} cm).")
             return
 
-        # 1. Calcul des rayons pour chaque roue
         turn_radius_cm = diameter_cm / 2.0
         radius_outer = turn_radius_cm + (self.WHEELBASE_CM / 2.0)
         radius_inner = turn_radius_cm - (self.WHEELBASE_CM / 2.0)
-
-        # 2. Calcul du ratio des vitesses
-        if radius_outer == 0: return # Évite la division par zéro
         speed_ratio = radius_inner / radius_outer
-        
         speed_outer_kmh = speed_kmh
         speed_inner_kmh = speed_kmh * speed_ratio
 
-        # 3. Calcul de la durée du virage
         angle_rad = math.radians(abs(angle_deg))
         distance_outer_cm = radius_outer * angle_rad
         speed_outer_cm_s = (speed_outer_kmh * 100000) / 3600
         if speed_outer_cm_s == 0: return
         turn_duration_s = distance_outer_cm / speed_outer_cm_s
 
-        # 4. Attribution des vitesses aux moteurs
-        if direction_mt == "right": # Virage à droite
-            print(f"Virage à droite. Moteur Droit (intérieur): {speed_inner_kmh:.2f} km/h, Moteur Gauche (extérieur): {speed_outer_kmh:.2f} km/h.")
-            delay_gauche = self._calculate_delay(speed_outer_kmh) # Extérieur
-            delay_droit = self._calculate_delay(speed_inner_kmh)  # Intérieur
+        if angle_deg > 0:
+            delay_gauche, delay_droit = self._calculate_delay(speed_outer_kmh), self._calculate_delay(speed_inner_kmh)
             dir_gauche, dir_droit = 'forward', 'backward'
-        else: # Virage à gauche
-            print(f"Virage à gauche. Moteur Gauche (intérieur): {speed_inner_kmh:.2f} km/h, Moteur Droit (extérieur): {speed_outer_kmh:.2f} km/h.")
-            delay_gauche = self._calculate_delay(speed_inner_kmh)  # Intérieur
-            delay_droit = self._calculate_delay(speed_outer_kmh) # Extérieur
+        else:
+            delay_gauche, delay_droit = self._calculate_delay(speed_inner_kmh), self._calculate_delay(speed_outer_kmh)
             dir_gauche, dir_droit = 'forward', 'backward'
             
-        # 5. Exécution du virage dans un thread
         def _execute_turn():
-            # Mise à jour directe des vitesses sans rampe pour ce mouvement précis
             self.motor_gauche.set_speed(delay_gauche)
             self.motor_droit.set_speed(delay_droit)
-            
-            # Démarrage des moteurs
             move_thread = threading.Thread(target=self._move_both_motors, args=(dir_gauche, dir_droit))
             move_thread.start()
-
-            # Attendre la fin du virage
             time.sleep(turn_duration_s)
-
-            # Arrêter les moteurs (version abrupte pour la précision du virage)
             self.stop_event.set()
             move_thread.join()
             print(f"Virage de {angle_deg}° terminé.")
 
-        self.stop() # S'assurer que le robot est arrêté avant
+        self.stop()
         self.stop_event.clear()
         self.current_thread = threading.Thread(target=_execute_turn)
         self.current_thread.start()
             
     def _move_both_motors(self, direction_gauche, direction_droit):
-        """Fonction cible pour les threads de mouvement."""
         thread_gauche = threading.Thread(target=self.motor_gauche.move_continuously, args=(direction_gauche, self.stop_event, self.pause_event))
         thread_droit = threading.Thread(target=self.motor_droit.move_continuously, args=(direction_droit, self.stop_event, self.pause_event))
-        
         thread_gauche.start()
         thread_droit.start()
-        
         thread_gauche.join()
         thread_droit.join()
 
     def update_speed(self, speed_kmh):
-        """Met à jour la vitesse des moteurs et conserve la vitesse actuelle."""
         safe_speed = max(0, min(speed_kmh, self.MAX_SPEED_KMH))
         self.current_speed_kmh = safe_speed
-        
         delay = self._calculate_delay(safe_speed)
-        # Ne pas afficher pour les rampes pour éviter de spammer la console
-        # print(f"Vitesse mise à jour. Vitesse: {safe_speed} KM/H, Nouveau délai: {delay} sec")
         self.motor_gauche.set_speed(delay)
         self.motor_droit.set_speed(delay)
 
     def stop(self):
-        """Arrête tout mouvement en cours avec une décélération progressive."""
         if self.current_thread and self.current_thread.is_alive():
-            print("Arrêt progressif du robot...")
-            
-            # S'assurer que toute accélération est terminée avant de décélérer
-            if self.ramp_thread and self.ramp_thread.is_alive():
-                self.ramp_thread.join()
-            
-            # Lancer la rampe de décélération (bloquante)
             start_decel_speed = self.current_speed_kmh
             if start_decel_speed > self.MIN_SPEED_KMH:
                  self._ramp_speed(start_decel_speed, self.MIN_SPEED_KMH, self.ACCEL_DURATION_S)
-            
-            # Stopper les threads moteurs
             self.stop_event.set()
             self.current_thread.join(timeout=1.0)
-        
         self.motor_gauche.stop_moving()
         self.motor_droit.stop_moving()
         self.current_speed_kmh = 0.0
-        # print("Moteurs arrêtés.") # Commenté pour une sortie plus propre
 
-    def pause(self):
-        print("Pause du robot...")
-        self.pause_event.set()
-
-    def resume(self):
-        print("Reprise du mouvement...")
-        self.pause_event.clear()
-        
     def cleanup(self):
         print("Nettoyage des broches GPIO.")
         self.stop()
-        if self.pi:
-            self.pi.stop()
-            print("Instance pigpio arrêtée.")
+        if self.pi: self.pi.stop()
+
+    # --- NOUVELLES FONCTIONS POUR LE MODE AUTONOME ---
+
+    def move_for_distance(self, speed_kmh, distance_cm):
+        """
+        Avance en ligne droite sur une distance précise. Mouvement bloquant.
+        """
+        print(f"Déplacement demandé de {distance_cm} cm à {speed_kmh} km/h.")
+        speed_cm_s = (speed_kmh * 100000) / 3600
+        if speed_cm_s <= 0: return
+        duration_s = distance_cm / speed_cm_s
+
+        def _execute_move():
+            self._start_movement_with_ramp(speed_kmh, 'forward', 'backward')
+            time.sleep(duration_s)
+            self.stop()
+            print("Déplacement terminé.")
+
+        # Exécute le mouvement de manière bloquante
+        move_thread = threading.Thread(target=_execute_move)
+        move_thread.start()
+        move_thread.join()
+
+    def turn_on_spot_for_angle(self, speed_kmh, angle_deg):
+        """
+        Pivote sur place d'un angle précis. Mouvement bloquant.
+        Angle positif pour la droite, négatif pour la gauche.
+        """
+        print(f"Rotation sur place demandée de {angle_deg} degrés.")
+        
+        # Le chemin parcouru par une roue est un arc de cercle dont le rayon est la moitié de l'empattement
+        distance_cm = (math.pi * self.WHEELBASE_CM) * (abs(angle_deg) / 360.0)
+        speed_cm_s = (speed_kmh * 100000) / 3600
+        if speed_cm_s <= 0: return
+        duration_s = distance_cm / speed_cm_s
+
+        if angle_deg > 0: # Droite
+            dirs = ('forward', 'forward')
+        else: # Gauche
+            dirs = ('backward', 'backward')
+
+        def _execute_turn():
+            self._start_movement_with_ramp(speed_kmh, dirs[0], dirs[1])
+            time.sleep(duration_s)
+            self.stop()
+            print("Rotation terminée.")
+        
+        # Exécute la rotation de manière bloquante
+        turn_thread = threading.Thread(target=_execute_turn)
+        turn_thread.start()
+        turn_thread.join()

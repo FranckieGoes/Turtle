@@ -7,38 +7,82 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-8">
 
-    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-2xl mx-auto">
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl mx-auto">
         <h1 class="text-3xl sm:text-4xl font-bold mb-6 text-indigo-700 text-center">Mes Zones de Tonte</h1>
         
         <div id="zones-list" class="space-y-3">
             {% if zones %}
                 <ul class="divide-y divide-gray-200">
                     {% for zone in zones %}
-                    <li class="py-4 flex justify-between items-center">
+                    <li class="py-4 flex justify-between items-center space-x-2">
                         <span class="text-lg text-gray-800 font-medium">{{ zone.name }}</span>
-                        <a href="/view_zone?name={{ zone.name }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition-transform transform hover:scale-105">
-                            Visualiser
-                        </a>
+                        <div class="flex flex-wrap space-x-2">
+                            <a href="/view_zone?name={{ zone.name }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Visualiser</a>
+                            
+                            {% if '_parcours' in zone.name %}
+                            <button data-zone-name="{{ zone.name }}" class="start-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Lancer</button>
+                            {% else %}
+                            <button data-zone-name="{{ zone.name }}" class="generate-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Générer Parcours</button>
+                            {% endif %}
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>
             {% else %}
-                <p class="text-center text-gray-500 py-8">Aucune zone n'a été enregistrée pour le moment.</p>
+                <p class="text-center text-gray-500 py-8">Aucune zone enregistrée.</p>
             {% endif %}
         </div>
-         <div class="mt-8 text-center">
-            <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">
-                &larr; Retour au panneau de contrôle
-            </a>
-        </div>
+         <div class="mt-8 text-center"><a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">&larr; Retour au contrôle</a></div>
     </div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Logique pour le bouton "Lancer"
+            document.querySelectorAll('.start-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const zoneName = button.dataset.zoneName;
+                    if (confirm(`Vraiment lancer la tonte pour la zone "${zoneName}" ?`)) {
+                        try {
+                            const response = await fetch(`/api/start_zone/${zoneName}`, { method: 'POST' });
+                            const data = await response.json();
+                            alert(data.message);
+                        } catch (error) {
+                            alert('Erreur de communication avec le robot.');
+                        }
+                    }
+                });
+            });
+
+            // Logique pour le bouton "Générer Parcours"
+            document.querySelectorAll('.generate-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const zoneName = button.dataset.zoneName;
+                    const width = prompt(`Entrez la largeur de coupe du robot en cm pour "${zoneName}":`, "20");
+                    
+                    if (width && !isNaN(parseFloat(width))) {
+                        try {
+                            const response = await fetch(`/api/generate_path/${zoneName}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ width: parseFloat(width) })
+                            });
+                            const data = await response.json();
+                            alert(data.message);
+                            if (response.ok) { window.location.reload(); }
+                        } catch (error) {
+                            alert('Erreur de communication avec le serveur.');
+                        }
+                    } else if (width !== null) {
+                        alert("Veuillez entrer une valeur numérique valide.");
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
