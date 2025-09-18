@@ -1,0 +1,27 @@
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Logique pour le bouton "Lancer"
+        document.querySelectorAll('.start-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const zoneName = button.dataset.zoneName;
+                if (confirm(`Vraiment lancer la tonte pour la zone "${zoneName}" ?`)) {
+                    try {
+                        const response = await fetch(`/api/start_zone/${zoneName}`, { method: 'POST' });
+                        const data = await response.json();
+                        if (response.ok) {
+                            // REDIRECTION AUTOMATIQUE
+                            window.location.href = `/supervision`;
+                        } else {
+                            alert(`Erreur: ${data.message}`);
+                        }
+                    } catch (error) {
+                        alert('Erreur de communication avec le robot.');
+                    }
+                }
+            });
+        });
+
+        // Logique pour le bouton "Générer Parcours" (inchangée)
+        // ...
+    });
+</script>

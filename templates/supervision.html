@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Supervision de la Tonte</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6">
+
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-4xl mx-auto text-center">
+        <h1 id="page-title" class="text-3xl font-bold mb-2 text-indigo-700">Supervision en direct</h1>
+        <p id="status-text" class="text-gray-600 mb-4">Chargement des données...</p>
+        
+        <div class="relative w-full aspect-[4/3] bg-gray-200 rounded-lg shadow-inner">
+            <canvas id="supervisionCanvas"></canvas>
+        </div>
+
+        <div class="mt-6">
+            <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">&larr; Retour au panneau de contrôle</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('supervisionCanvas');
+            const ctx = canvas.getContext('2d');
+            const pageTitle = document.getElementById('page-title');
+            const statusText = document.getElementById('status-text');
+            
+            let zoneVectors = null;
+
+            function draw() {
+                // Cette fonction sera appelée à chaque mise à jour
+            }
+
+            async function fetchDataAndDraw() {
+                try {
+                    // 1. Récupérer le statut en direct (position, etc.)
+                    const statusResponse = await fetch('/api/live_status');
+                    const liveData = await statusResponse.json();
+                    
+                    statusText.textContent = `Statut : ${liveData.status}`;
+
+                    // 2. Si on n'a pas encore la carte de la zone, la charger
+                    if (!zoneVectors && liveData.zone_name) {
+                        pageTitle.textContent = `Supervision de : ${liveData.zone_name}`;
+                        const zoneResponse = await fetch(`/api/zone/${liveData.zone_name}`);
+                        zoneVectors = await zoneResponse.json();
+                    }
+
+                    // 3. Dessiner la scène
+                    drawScene(zoneVectors, liveData.position);
+
+                } catch (error) {
+                    console.error("Erreur de mise à jour:", error);
+                    statusText.textContent = "Erreur de connexion.";
+                }
+            }
+
+            function drawScene(vectors, robotPosition) {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (!vectors) return;
+
+                // Logique de centrage et de mise à l'échelle (similaire à mowing_zone.html)
+                let minX = 0, maxX = 0, minY = 0, maxY = 0, x = 0, y = 0, angle = -90;
+                const pathPoints = [{x: 0, y: 0}];
+                vectors.forEach(v => {
+                    angle += v.relative_angle;
+                    const angleRad = angle * Math.PI / 180;
+                    x += v.distance * Math.cos(angleRad);
+                    y += v.distance * Math.sin(angleRad);
+                    pathPoints.push({x: x, y: y});
+                    minX = Math.min(minX, x, robotPosition.x); maxX = Math.max(maxX, x, robotPosition.x);
+                    minY = Math.min(minY, y, robotPosition.y); maxY = Math.max(maxY, y, robotPosition.y);
+                });
+                
+                const pathWidth = maxX - minX;
+                const pathHeight = maxY - minY;
+                const scale = Math.min((canvas.width * 0.9) / (pathWidth || 1), (canvas.height * 0.9) / (pathHeight || 1));
+                const startX = (canvas.width / 2) - ((minX + maxX) / 2 * scale);
+                const startY = (canvas.height / 2) - ((minY + maxY) / 2 * scale);
+
+                // Dessiner le tracé de la zone
+                ctx.strokeStyle = '#a5b4fc';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(startX + pathPoints[0].x * scale, startY + pathPoints[0].y * scale);
+                pathPoints.slice(1).forEach(p => ctx.lineTo(startX + p.x * scale, startY + p.y * scale));
+                ctx.stroke();
+
+                // Dessiner le robot
+                const robotX = startX + robotPosition.x * scale;
+                const robotY = startY + robotPosition.y * scale;
+                const robotAngleRad = Math.radians(robotPosition.angle);
+                
+                ctx.fillStyle = '#4f46e5';
+                ctx.beginPath();
+                ctx.arc(robotX, robotY, 8, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Dessiner l'indicateur de direction
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(robotX, robotY);
+                ctx.lineTo(robotX + 15 * Math.cos(robotAngleRad), robotY + 15 * Math.sin(robotAngleRad));
+                ctx.stroke();
+            }
+            
+            Math.radians = (degrees) => degrees * Math.PI / 180;
+
+            // Lancer le polling
+            setInterval(fetchDataAndDraw, 1000); // Mettre à jour toutes les secondes
+        });
+    </script>
+</body>
+</html>
