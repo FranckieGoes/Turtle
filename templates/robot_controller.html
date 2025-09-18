@@ -19,7 +19,7 @@
         
         <div class="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-inner">
             <div class="text-center"><span id="speed-display" class="block text-2xl font-bold text-indigo-600">3.0</span><span class="text-sm text-gray-500">km/h</span></div>
-            <div class="text-center"><span id="angle-display" class="block text-2xl font-bold text-indigo-600">180</span><span class="text-sm text-gray-500">degrés</span></div>
+            <div class="text-center"><span id="angle-display" class="block text-2xl font-bold text-indigo-600">90</span><span class="text-sm text-gray-500">degrés</span></div>
             <div class="text-center"><span id="diameter-display" class="block text-2xl font-bold text-indigo-600">150</span><span class="text-sm text-gray-500">cm</span></div>
             <div class="text-center"><span id="status-display" class="block text-sm font-semibold text-green-500">Prêt</span><span class="text-sm text-gray-500">Statut</span></div>
         </div>
@@ -40,6 +40,9 @@
 
         <div class="flex justify-around items-center space-x-4 pt-4">
             <button id="start-record-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Démarrer Enregistrement</button>
+        </div>
+        <div class="flex justify-around items-center space-x-4 pt-4">
+            <button id="stop-record-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Arrêt Enregistrement</button>
         </div>
         <div class="flex justify-around items-center space-x-4">
             <button id="obstacle-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Simuler Obstacle</button>
@@ -67,10 +70,11 @@
         const anglePlusBtn = document.getElementById('angle-plus-btn'), angleMinusBtn = document.getElementById('angle-minus-btn');
         const diameterPlusBtn = document.getElementById('diameter-plus-btn'), diameterMinusBtn = document.getElementById('diameter-minus-btn');
         const startRecordBtn = document.getElementById('start-record-btn'), obstacleBtn = document.getElementById('obstacle-btn'), resumeBtn = document.getElementById('resume-btn');
+        const stopRecordBtn = document.getElementById('stop-record-btn');
         const modal = document.getElementById('record-modal'), modalStopBtn = document.getElementById('modal-stop-record-btn'), liveCanvas = document.getElementById('live-canvas');
         const ctx = liveCanvas.getContext('2d');
         
-        let currentSpeed = 3.0, currentAngle = 180.0, currentDiameter = 150.0;
+        let currentSpeed = 3.0, currentAngle = 90.0, currentDiameter = 150.0;
         let lastStatusMessage = "", pollingInterval = null;
 
         const MAX_SPEED = 10.0, MIN_SPEED = 0.5, SPEED_STEP = 0.5;
@@ -166,8 +170,8 @@
         for (const [btnId, cmd] of Object.entries(continuousCommands)) {
             const btn = document.getElementById(btnId);
             btn.addEventListener('mousedown', () => sendCommand(cmd));
-            btn.addEventListener('mouseup', () => sendCommand('stop'));
-            btn.addEventListener('mouseleave', () => sendCommand('stop'));
+            //btn.addEventListener('mouseup', () => sendCommand('stop'));
+            //btn.addEventListener('mouseleave', () => sendCommand('stop'));
         }
         document.getElementById('stop-btn').addEventListener('click', () => {
             if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; modal.style.display = 'none'; }
@@ -180,8 +184,10 @@
         diameterPlusBtn.addEventListener('click', () => { currentDiameter = Math.min(MAX_DIAMETER, currentDiameter + DIAMETER_STEP); updateUI(); sendCommand('set_diameter', { diameter: currentDiameter }); });
         diameterMinusBtn.addEventListener('click', () => { currentDiameter = Math.max(MIN_DIAMETER, currentDiameter - DIAMETER_STEP); updateUI(); sendCommand('set_diameter', { diameter: currentDiameter }); });
         
-        startRecordBtn.addEventListener('click', () => { sendCommand('start_recording'); modal.style.display = 'flex'; pollingInterval = setInterval(pollLivePath, 2000); });
-        modalStopBtn.addEventListener('click', stopAndSaveRecording);
+        startRecordBtn.addEventListener('click', () => { sendCommand('start_recording'); modal.style.display = 'none'; pollingInterval = setInterval(pollLivePath, 2000); });
+        //stopRecordBtn.addEventListener('click', () => { sendCommand('stop_recording');
+        //modalStopBtn.addEventListener('click', stopAndSaveRecording);
+        stopRecordBtn.addEventListener('click', stopAndSaveRecording);
         obstacleBtn.addEventListener('click', () => sendCommand('simulate_obstacle'));
         resumeBtn.addEventListener('click', () => sendCommand('resume'));
 

@@ -21,7 +21,7 @@ robot = RobotController(pi, motor_gauche_pins, motor_droit_pins)
 atexit.register(robot.cleanup)
 
 # --- Variables globales ---
-current_angle = 180.0
+current_angle = 90.0
 current_speed = 3.0
 current_diameter = 150.0
 robot_status = "Prêt"
@@ -126,7 +126,7 @@ def home(): return render_template('robot_controller.html')
 
 @app.route('/api/command', methods=['POST'])
 def handle_command():
-    global current_angle, current_speed, is_recording, current_diameter, robot_status, status_before_pause
+    global current_angle, current_speed, is_recording, current_diameter, robot_status, status_before_pause, raw_path_log 
     data = request.json
     command, params = data.get('command'), data.get('params', {})
     response_message, status = "", "success"
@@ -209,6 +209,7 @@ def get_zones_list(): return jsonify(db_manager.get_all_zones())
 @app.route('/api/live_path', methods=['GET'])
 def get_live_path():
     if is_recording: return jsonify(process_raw_path_to_vectors(raw_path_log))
+    #print("route('/api/live_path', valeur raw_path_log = ", raw_path_log, jsonify([]))
     return jsonify([])
 
 @app.route('/api/generate_path/<string:zone_name>', methods=['POST'])
