@@ -21,7 +21,29 @@
             });
         });
 
-        // Logique pour le bouton "Générer Parcours" (inchangée)
-        // ...
+        // Logique pour le bouton "Générer Parcours"
+        document.querySelectorAll('.generate-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const zoneName = button.dataset.zoneName;
+                const width = prompt(`Entrez la largeur de coupe du robot en cm pour "${zoneName}":`, "20");
+                
+                if (width && !isNaN(parseFloat(width))) {
+                    try {
+                        const response = await fetch(`/api/generate_path/${zoneName}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ width: parseFloat(width) })
+                        });
+                        const data = await response.json();
+                        alert(data.message);
+                        if (response.ok) { window.location.reload(); }
+                    } catch (error) {
+                        alert('Erreur de communication avec le serveur.');
+                    }
+                } else if (width !== null) {
+                    alert("Veuillez entrer une valeur numérique valide.");
+                }
+            });
+        });
     });
 </script>

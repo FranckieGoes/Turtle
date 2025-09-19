@@ -1,35 +1,19 @@
+# Fichier : server_for_robot.py (CORRIGÉ)
+
 # -*- coding: utf-8 -*-
-import pigpio, time, atexit, sys, math
+import pigpio, time, atexit, sys, threading, math
 from flask import Flask, request, jsonify, render_template
 from robot_controller_class import RobotController
 from database_manager import DatabaseManager
 
-# --- Initialisation de pigpio ---
-try:
-    pi = pigpio.pi()
-    if not pi.connected:
-        print("Erreur : le démon pigpiod n'est pas en cours d'exécution. Veuillez le démarrer avec 'sudo pigpiod'.")
-        sys.exit(1)
-except Exception as e:
-    print(f"Erreur de connexion à pigpio: {e}")
-    sys.exit(1)
-
-# --- Initialisation de Flask et de la DB ---
+# --- Initialisations ---
+pi = pigpio.pi()
 app = Flask(__name__)
 db_manager = DatabaseManager()
-# Définition des broches GPIO pour les moteurs
-# Les broches sont désormais définies dans le fichier de serveur.
 motor_gauche_pins = { 'dir_pin': 27, 'step_pin': 12, 'en_pin': 22 }
 motor_droit_pins = { 'dir_pin': 16, 'step_pin': 13, 'en_pin': 21 }
-
-try:
-    # Passer l'instance de pigpio au RobotController
-    robot = RobotController(pi, motor_gauche_pins, motor_droit_pins)
-    # Enregistrer la fonction de nettoyage pour qu'elle s'exécute à la sortie du script
-    atexit.register(robot.cleanup)
-except Exception as e:
-    print(f"Erreur lors de l'initialisation du RobotController: {e}")
-    robot = None
+robot = RobotController(pi, motor_gauche_pins, motor_droit_pins)
+atexit.register(robot.cleanup)
 
 # --- Variables globales ---
 current_angle = 90.0
@@ -37,14 +21,12 @@ current_speed = 3.0
 current_diameter = 150.0
 robot_status = "Prêt"
 status_before_pause = "Prêt"
-# Variables pour l'enregistrement du parcours
 is_recording = False
 raw_path_log = []
 
 # NOUVELLES VARIABLES POUR LE SUIVI EN DIRECT
 live_robot_position = {'x': 0, 'y': 0, 'angle': -90}
 live_zone_name = None
-
 
 # --- Fonctions de traitement du parcours ---
 def process_raw_path_to_vectors(path_log):
@@ -197,8 +179,6 @@ def home(): return render_template('robot_controller.html')
 def handle_command():
     global current_angle, current_speed, is_recording, current_diameter, robot_status, status_before_pause, raw_path_log 
     data = request.json
-    print("data = ", data)
-
     command, params = data.get('command'), data.get('params', {})
     response_message, status = "", "success"
 
@@ -212,7 +192,6 @@ def handle_command():
     elif command == 'backward': robot.move_backward(current_speed); robot_status = "Déplacement manuel"
     elif command == 'turn_left': robot.select_type_rotate(current_angle, current_diameter, "left", current_speed); robot_status = "Déplacement manuel"
     elif command == 'turn_right': robot.select_type_rotate(current_angle, current_diameter, "right", current_speed); robot_status = "Déplacement manuel"
-        #print("Commande turn_")
     elif command == 'stop': robot.stop(); robot_status = "Prêt"
     elif command == 'set_angle': current_angle = float(params.get('angle', current_angle))
     elif command == 'set_speed': current_speed = float(params.get('speed', current_speed)); robot.update_speed(current_speed)

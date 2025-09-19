@@ -97,12 +97,15 @@ class RobotController:
     # --- Fonctions de sélection de virage (modifiées pour appeler les bonnes fonctions) ---
     def select_type_rotate(self, angle_IHM, diametre_IHM, direction_IHM, vitesse_IHM):
         angle_deg = -angle_IHM if direction_IHM == "left" else angle_IHM
+        print("select_type_rotate")
         # Note: make_turn n'est pas encore converti au comptage de pas.
         # Seuls les virages sur place sont améliorés pour l'instant.
         if diametre_IHM < self.WHEELBASE_CM:
              self.turn_on_spot_for_angle(vitesse_IHM, angle_deg)
+             print("turn_on_spot_for_angle")
         else:
              self.make_turn(vitesse_IHM, diametre_IHM, angle_deg) # Garde l'ancienne méthode pour les virages larges
+             print("make_turn")
 
     # --- Fonctions pour le mode autonome (MISES À JOUR AVEC COMPTAGE DE PAS) ---
     def move_for_distance(self, speed_kmh, distance_cm):
@@ -158,7 +161,46 @@ class RobotController:
         print("Rotation terminée.")
     
     # ... (Autres fonctions comme make_turn, cleanup, pause, resume restent inchangées)
-    def make_turn(self, speed_kmh, diameter_cm, angle_deg): pass
+    def make_turn(self, speed_kmh, diameter_cm, angle_deg):
+        print(f"Virage demandé: {angle_deg}° sur un diamètre de {diameter_cm} cm à {speed_kmh} km/h.")
+        if diameter_cm < self.WHEELBASE_CM:
+            print(f"Erreur: Diamètre ({diameter_cm} cm) inférieur à l'empattement ({self.WHEELBASE_CM} cm).")
+            return
+
+        turn_radius_cm = diameter_cm / 2.0
+        radius_outer = turn_radius_cm + (self.WHEELBASE_CM / 2.0)
+        radius_inner = turn_radius_cm - (self.WHEELBASE_CM / 2.0)
+        speed_ratio = radius_inner / radius_outer
+        speed_outer_kmh = speed_kmh
+        speed_inner_kmh = speed_kmh * speed_ratio
+
+        angle_rad = math.radians(abs(angle_deg))
+        distance_outer_cm = radius_outer * angle_rad
+        speed_outer_cm_s = (speed_outer_kmh * 100000) / 3600
+        if speed_outer_cm_s == 0: return
+        turn_duration_s = distance_outer_cm / speed_outer_cm_s
+
+        if angle_deg > 0:
+            delay_gauche, delay_droit = self._calculate_delay(speed_outer_kmh), self._calculate_delay(speed_inner_kmh)
+            dir_gauche, dir_droit = 'forward', 'backward'
+        else:
+            delay_gauche, delay_droit = self._calculate_delay(speed_inner_kmh), self._calculate_delay(speed_outer_kmh)
+            dir_gauche, dir_droit = 'forward', 'backward'
+            
+        def _execute_turn():
+            self.motor_gauche.set_speed(delay_gauche)
+            self.motor_droit.set_speed(delay_droit)
+            move_thread = threading.Thread(target=self._move_both_motors, args=(dir_gauche, dir_droit))
+            move_thread.start()
+            time.sleep(turn_duration_s)
+            self.stop_event.set()
+            move_thread.join()
+            print(f"Virage de {angle_deg}° terminé.")
+
+        self.stop()
+        self.stop_event.clear()
+        self.current_thread = threading.Thread(target=_execute_turn)
+        self.current_thread.start()
     
     def cleanup(self): self.stop(); self.pi.stop()
     
