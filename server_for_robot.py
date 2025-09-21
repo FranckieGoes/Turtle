@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
-import pigpio, time, atexit, sys, math
+import pigpio, time, atexit, sys, math, serial, threading
 from flask import Flask, request, jsonify, render_template
 from robot_controller_class import RobotController
 from database_manager import DatabaseManager
+
+# --- Initialisation de Flask et de la DB ---
+app = Flask(__name__)
+db_manager = DatabaseManager()
+# Définition des broches GPIO pour les moteurs
+# Les broches sont désormais définies dans le fichier de serveur.
+motor_gauche_pins = { 'dir_pin': 27, 'step_pin': 12, 'en_pin': 22 }
+motor_droit_pins = { 'dir_pin': 16, 'step_pin': 13, 'en_pin': 21 }
+
+# Initialisation USB
+try:
+    ser = serial.Serial('/dev/ttyUSB0', 115200)
+except Exception as e:
+    print(f"Pas de liaison ttyUSB0 disponible: {e}")
 
 # --- Initialisation de pigpio ---
 try:
@@ -13,14 +27,6 @@ try:
 except Exception as e:
     print(f"Erreur de connexion à pigpio: {e}")
     sys.exit(1)
-
-# --- Initialisation de Flask et de la DB ---
-app = Flask(__name__)
-db_manager = DatabaseManager()
-# Définition des broches GPIO pour les moteurs
-# Les broches sont désormais définies dans le fichier de serveur.
-motor_gauche_pins = { 'dir_pin': 27, 'step_pin': 12, 'en_pin': 22 }
-motor_droit_pins = { 'dir_pin': 16, 'step_pin': 13, 'en_pin': 21 }
 
 try:
     # Passer l'instance de pigpio au RobotController
@@ -44,6 +50,22 @@ raw_path_log = []
 # NOUVELLES VARIABLES POUR LE SUIVI EN DIRECT
 live_robot_position = {'x': 0, 'y': 0, 'angle': -90}
 live_zone_name = None
+
+"""
+#while True:
+    command = ser.readline().decode().strip()
+    print("Commande reçue :", command)
+
+    # Envoi vers Flask (si tu as une route /commande)
+    try:
+        #requests.post("http://localhost:5000/command", json={"action": command})
+        if command == 'forward': robot.move_forward(current_speed); robot_status = "Déplacement manuel"
+        elif command == 'backward': robot.move_backward(current_speed); robot_status = "Déplacement manuel"
+        elif command == 'stop': robot.stop(); robot_status = "Prêt"
+        elif command == 'turn_right': robot.select_type_rotate(current_angle, current_diameter, "right", current_speed); robot_status = "Déplacement manuel"
+
+    except Exception as e:
+        print("Erreur d'envoi :", e)"""
 
 
 # --- Fonctions de traitement du parcours ---

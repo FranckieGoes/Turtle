@@ -3,3 +3,6 @@ Mouvements continus validés
 Affichage en direct du robot en cours de tonte, 1ère version
 
 Maintenant que le suivi en direct est fonctionnel, la prochaine étape logique est de commencer à préparer le terrain pour votre Lidar. Que diriez-vous d'installer ROS (Robot Operating System) sur votre Raspberry Pi ? C'est le standard industriel pour gérer les capteurs, les déplacements et les algorithmes comme le SLAM, et ce sera indispensable pour exploiter pleinement votre Lidar.
+
+20092025
+Connexion avec ESP32 en USB fonctionnel, liaison avec raspberry en bluetooth au travers de l 'ESP32 fonctionnelle, mise en place du nouveau booster 20A, tension pour le momment réglée à 24 V
