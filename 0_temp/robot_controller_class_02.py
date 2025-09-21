@@ -12,9 +12,9 @@ class RobotController:
     WHEELBASE_CM = 52.0
     STEPS_PER_CM = 21 # Constante clé pour la conversion distance -> pas
     MAX_SPEED_KMH = 10.0
-    MIN_SPEED_KMH = 0.05
-    ACCEL_DURATION_S = 1.5
-    RAMP_STEPS = 200
+    MIN_SPEED_KMH = 0.3
+    ACCEL_DURATION_S = 1.0
+    RAMP_STEPS = 50
     
     def __init__(self, pi, motor_gauche_pins, motor_droit_pins):
         print("Initialisation du RobotController avec pigpio...")
@@ -215,90 +215,30 @@ class RobotController:
     def _start_turn_with_ramp(self, speed_kmh, angle_deg):
         """Démarre un virage sur place avec rampe d'accélération/décélération"""
         self.stop()
-    
+        
         # Calculer les paramètres du virage
         arc_distance_cm = (math.pi * self.WHEELBASE_CM) * (abs(angle_deg) / 360.0)
         total_steps = int(arc_distance_cm * self.STEPS_PER_CM)
         if total_steps <= 0:
             return
-        
+            
         # Directions selon l'angle
         dir_gauche = 'backward' if angle_deg < 0 else 'forward'
         dir_droit = 'backward' if angle_deg < 0 else 'forward'
-    
-        # Démarrer à vitesse minimale
+        
+        # 1. Phase d'accélération
         self.update_speed(self.MIN_SPEED_KMH)
-        
-        # Lancer le mouvement des moteurs en continu
         self._start_thread(
-            target_func=self._execute_turn_with_ramp, 
-            args_tuple=(dir_gauche, dir_droit, speed_kmh, total_steps)
-        )
-
-    def _execute_turn_with_ramp(self, dir_gauche, dir_droit, target_speed, total_steps):
-        """Exécute le virage avec rampe d'accélération et décélération"""
-        
-        # Calculer les timings
-        delay_final = self._calculate_delay(target_speed)
-        total_duration = total_steps * delay_final * 2  # Durée totale estimée
-    
-        accel_duration = min(self.ACCEL_DURATION_S, total_duration / 3)
-        decel_duration = min(self.ACCEL_DURATION_S, total_duration / 3)
-        const_duration = max(0, total_duration - accel_duration - decel_duration)
-        
-        print(f"Virage: {total_steps} pas, durées A/C/D = {accel_duration:.1f}/{const_duration:.1f}/{decel_duration:.1f}s")
-        
-        # Démarrer les moteurs
-        thread_gauche = threading.Thread(
-            target=self.motor_gauche.move_continuously,
-            args=(dir_gauche, self.stop_event, self.pause_event)
-        )
-        thread_droit = threading.Thread(
-            target=self.motor_droit.move_continuously,
-            args=(dir_droit, self.stop_event, self.pause_event)
+            target_func=self._execute_precise_turn, 
+            args_tuple=(total_steps, dir_gauche, dir_droit, speed_kmh)
         )
         
-        thread_gauche.start()
-        thread_droit.start()
-        
-        start_time = time.time()
-        
-        # Phase 1 : Accélération
-        print("Phase accélération...")
-        for i in range(self.RAMP_STEPS + 1):
-            if self.stop_event.is_set():
-                break
-                
-            progress = i / self.RAMP_STEPS
-            current_speed = self.MIN_SPEED_KMH + (target_speed - self.MIN_SPEED_KMH) * progress
-            self.update_speed(current_speed)
-            time.sleep(accel_duration / self.RAMP_STEPS)
-        
-        # Phase 2 : Vitesse constante
-        if const_duration > 0:
-            print("Phase vitesse constante...")
-            self.update_speed(target_speed)
-            time.sleep(const_duration)
-        
-        # Phase 3 : Décélération
-        print("Phase décélération...")
-        for i in range(self.RAMP_STEPS + 1):
-            if self.stop_event.is_set():
-                break
-                
-            progress = i / self.RAMP_STEPS
-            current_speed = target_speed - (target_speed - self.MIN_SPEED_KMH) * progress
-            self.update_speed(max(self.MIN_SPEED_KMH, current_speed))
-            time.sleep(decel_duration / self.RAMP_STEPS)
-        
-        # Arrêt final
-        self.stop_event.set()
-        thread_gauche.join()
-        thread_droit.join()
-        
-        actual_duration = time.time() - start_time
-        print(f"Virage terminé en {actual_duration:.1f}s")
-        self.current_speed_kmh = 0.0
+        # 2. Rampe d'accélération en parallèle
+        self.ramp_thread = threading.Thread(
+            target=self._ramp_speed, 
+            args=(self.MIN_SPEED_KMH, speed_kmh, self.ACCEL_DURATION_S)
+        )
+        self.ramp_thread.start()
     
     def _execute_precise_turn(self, total_steps, dir_gauche, dir_droit, target_speed):
         """Exécute le virage précis avec comptage de pas et rampe de décélération"""
@@ -349,14 +289,14 @@ class RobotController:
 
     # BONUS : Version avec rampe pour les virages larges aussi
     def _start_wide_turn_with_ramp(self, speed_kmh, diameter_cm, angle_deg):
-        """Démarre un virage large avec rampe - VERSION SIMPLIFIÉE"""
+        """Démarre un virage large avec rampe"""
         self.stop()
         
         if diameter_cm < self.WHEELBASE_CM:
             print(f"Erreur: Diamètre ({diameter_cm} cm) inférieur à l'empattement ({self.WHEELBASE_CM} cm).")
             return
 
-        # Calculs géométriques
+        # Calculs géométriques (identiques à make_turn)
         turn_radius_cm = diameter_cm / 2.0
         radius_outer = turn_radius_cm + (self.WHEELBASE_CM / 2.0)
         radius_inner = turn_radius_cm - (self.WHEELBASE_CM / 2.0)
@@ -364,8 +304,6 @@ class RobotController:
         
         angle_rad = math.radians(abs(angle_deg))
         distance_outer_cm = radius_outer * angle_rad
-        speed_outer_cm_s = (speed_kmh * 100000) / 3600
-        turn_duration_s = distance_outer_cm / speed_outer_cm_s if speed_outer_cm_s > 0 else 0
         
         # Vitesses différentielles
         if angle_deg > 0:  # Virage à droite
@@ -375,86 +313,23 @@ class RobotController:
             speed_gauche, speed_droit = speed_kmh * speed_ratio, speed_kmh
             dir_gauche, dir_droit = 'forward', 'backward'
         
-        print(f"Virage large: {angle_deg}° sur {diameter_cm}cm, vitesses G/D = {speed_gauche:.1f}/{speed_droit:.1f} km/h")
+        # Durée estimée du virage
+        speed_outer_cm_s = (speed_kmh * 100000) / 3600
+        turn_duration_s = distance_outer_cm / speed_outer_cm_s if speed_outer_cm_s > 0 else 0
         
-        # Démarrer le virage avec rampe
+        # Démarrer avec rampe
+        self.update_speed(self.MIN_SPEED_KMH)
         self._start_thread(
-            target_func=self._execute_differential_turn_with_ramp,
+            target_func=self._execute_wide_turn_with_ramp,
             args_tuple=(speed_gauche, speed_droit, dir_gauche, dir_droit, turn_duration_s)
         )
-
-    def _execute_differential_turn_with_ramp(self, speed_gauche, speed_droit, dir_gauche, dir_droit, total_duration):
-        """Exécute un virage différentiel avec rampe"""
-            
-        # Calculer les phases
-        accel_duration = min(self.ACCEL_DURATION_S, total_duration / 3)
-        decel_duration = min(self.ACCEL_DURATION_S, total_duration / 3)
-        const_duration = max(0, total_duration - accel_duration - decel_duration)
-            
-        # Démarrer les moteurs
-        thread_gauche = threading.Thread(
-            target=self.motor_gauche.move_continuously,
-            args=(dir_gauche, self.stop_event, self.pause_event)
+        
+        # Rampe d'accélération
+        self.ramp_thread = threading.Thread(
+            target=self._ramp_speed,
+            args=(self.MIN_SPEED_KMH, speed_kmh, self.ACCEL_DURATION_S)
         )
-        thread_droit = threading.Thread(
-            target=self.motor_droit.move_continuously,
-            args=(dir_droit, self.stop_event, self.pause_event)
-        )
-            
-        thread_gauche.start()
-        thread_droit.start()
-            
-        start_time = time.time()
-            
-        # Phase 1 : Accélération différentielle
-        for i in range(self.RAMP_STEPS + 1):
-            if self.stop_event.is_set():
-                break
-                    
-            progress = i / self.RAMP_STEPS
-            current_speed_gauche = self.MIN_SPEED_KMH + (speed_gauche - self.MIN_SPEED_KMH) * progress
-            current_speed_droit = self.MIN_SPEED_KMH + (speed_droit - self.MIN_SPEED_KMH) * progress
-                
-            delay_gauche = self._calculate_delay(current_speed_gauche)
-            delay_droit = self._calculate_delay(current_speed_droit)
-                
-            self.motor_gauche.set_speed(delay_gauche)
-            self.motor_droit.set_speed(delay_droit)
-                
-            time.sleep(accel_duration / self.RAMP_STEPS)
-            
-        # Phase 2 : Vitesse constante
-        if const_duration > 0:
-            delay_gauche = self._calculate_delay(speed_gauche)
-            delay_droit = self._calculate_delay(speed_droit)
-            self.motor_gauche.set_speed(delay_gauche)
-            self.motor_droit.set_speed(delay_droit)
-            time.sleep(const_duration)
-            
-        # Phase 3 : Décélération différentielle
-        for i in range(self.RAMP_STEPS + 1):
-            if self.stop_event.is_set():
-                break
-                    
-            progress = i / self.RAMP_STEPS
-            current_speed_gauche = speed_gauche - (speed_gauche - self.MIN_SPEED_KMH) * progress
-            current_speed_droit = speed_droit - (speed_droit - self.MIN_SPEED_KMH) * progress
-                
-            delay_gauche = self._calculate_delay(max(self.MIN_SPEED_KMH, current_speed_gauche))
-            delay_droit = self._calculate_delay(max(self.MIN_SPEED_KMH, current_speed_droit))
-                
-            self.motor_gauche.set_speed(delay_gauche)
-            self.motor_droit.set_speed(delay_droit)
-                
-            time.sleep(decel_duration / self.RAMP_STEPS)
-            
-        # Arrêt
-        self.stop_event.set()
-        thread_gauche.join()
-        thread_droit.join()
-            
-        print("Virage large avec rampe terminé")
-        self.current_speed_kmh = 0.0
+        self.ramp_thread.start()
 
     def _execute_wide_turn_with_ramp(self, speed_gauche, speed_droit, dir_gauche, dir_droit, total_duration):
         """Exécute un virage large avec décélération progressive"""
