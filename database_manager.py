@@ -125,3 +125,172 @@ class DatabaseManager:
         conn.commit()
         conn.close()
         print(f"Historique de tonte sauvegardé pour la zone ID {zone_id}.")
+
+    def delete_zone(self, zone_id):
+        """
+        Supprime une zone par son ID.
+        
+        Args:
+            zone_id (int): L'ID de la zone à supprimer.
+            
+        Returns:
+            bool: True si supprimé avec succès, False sinon.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Vérifier si la zone existe
+            cursor.execute("SELECT name FROM zones WHERE id = ?", (zone_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                print(f"Erreur: Aucune zone trouvée avec l'ID {zone_id}.")
+                return False
+            
+            zone_name = result[0]
+            
+            # Supprimer d'abord l'historique associé (clé étrangère)
+            cursor.execute("DELETE FROM mowing_history WHERE zone_id = ?", (zone_id,))
+            
+            # Supprimer la zone
+            cursor.execute("DELETE FROM zones WHERE id = ?", (zone_id,))
+            
+            conn.commit()
+            print(f"Zone '{zone_name}' (ID: {zone_id}) supprimée avec succès.")
+            return True
+            
+        except Exception as e:
+            print(f"Erreur lors de la suppression de la zone ID {zone_id}: {e}")
+            return False
+        finally:
+            conn.close()
+
+    def delete_zones_by_ids(self, zone_ids):
+        """
+        Supprime plusieurs zones par leurs IDs.
+        
+        Args:
+            zone_ids (list): Liste des IDs des zones à supprimer.
+            
+        Returns:
+            dict: Résultat avec succès et échecs détaillés.
+        """
+        if not zone_ids:
+            return {"success": [], "failed": [], "message": "Aucune zone spécifiée."}
+        
+        success = []
+        failed = []
+        
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            for zone_id in zone_ids:
+                try:
+                    # Vérifier si la zone existe
+                    cursor.execute("SELECT name FROM zones WHERE id = ?", (zone_id,))
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        failed.append({"id": zone_id, "reason": "Zone introuvable"})
+                        continue
+                    
+                    zone_name = result[0]
+                    
+                    # Supprimer l'historique associé
+                    cursor.execute("DELETE FROM mowing_history WHERE zone_id = ?", (zone_id,))
+                    
+                    # Supprimer la zone
+                    cursor.execute("DELETE FROM zones WHERE id = ?", (zone_id,))
+                    
+                    success.append({"id": zone_id, "name": zone_name})
+                    
+                except Exception as e:
+                    failed.append({"id": zone_id, "reason": str(e)})
+            
+            conn.commit()
+            
+        except Exception as e:
+            return {"success": [], "failed": zone_ids, "message": f"Erreur de base de données: {e}"}
+        finally:
+            conn.close()
+        
+        return {
+            "success": success,
+            "failed": failed,
+            "message": f"{len(success)} zone(s) supprimée(s), {len(failed)} échec(s)"
+        }
+
+    def delete_all_zones(self):
+        """
+        Supprime TOUTES les zones et leur historique.
+        Attention: Cette opération est irréversible!
+        
+        Returns:
+            dict: Résultat de l'opération avec statistiques.
+        """
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            
+            # Compter les zones avant suppression
+            cursor.execute("SELECT COUNT(*) FROM zones")
+            zones_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) FROM mowing_history")
+            history_count = cursor.fetchone()[0]
+            
+            if zones_count == 0:
+                return {
+                    "success": True, 
+                    "message": "Aucune zone à supprimer.",
+                    "zones_deleted": 0,
+                    "history_deleted": 0
+                }
+            
+            # Supprimer tout l'historique
+            cursor.execute("DELETE FROM mowing_history")
+            
+            # Supprimer toutes les zones
+            cursor.execute("DELETE FROM zones")
+            
+            conn.commit()
+            
+            print(f"Suppression complète: {zones_count} zones et {history_count} entrées d'historique.")
+            
+            return {
+                "success": True,
+                "message": f"Toutes les données supprimées avec succès.",
+                "zones_deleted": zones_count,
+                "history_deleted": history_count
+            }
+            
+        except Exception as e:
+            print(f"Erreur lors de la suppression complète: {e}")
+            return {
+                "success": False,
+                "message": f"Erreur: {e}",
+                "zones_deleted": 0,
+                "history_deleted": 0
+            }
+        finally:
+            conn.close()
+
+    def get_zone_id_by_name(self, name):
+        """
+        Récupère l'ID d'une zone par son nom.
+        
+        Args:
+            name (str): Le nom de la zone.
+            
+        Returns:
+            int or None: L'ID de la zone ou None si introuvable.
+        """
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM zones WHERE name = ?", (name,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        return result[0] if result else None

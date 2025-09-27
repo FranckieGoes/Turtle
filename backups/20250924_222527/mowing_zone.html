@@ -105,6 +105,18 @@
                     }
                 });
 
+                vectors.forEach(v => {
+                    angle += v.relative_angle;
+                    const angleRad = angle * Math.PI / 180;
+                    x += v.distance * Math.cos(angleRad);
+                    y += v.distance * Math.sin(angleRad);
+                    pathPoints.push({x: x, y: y});
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                });
+
                 const pathWidth = maxX - minX;
                 const pathHeight = maxY - minY;
                 const pathCenterX = (minX + maxX) / 2;

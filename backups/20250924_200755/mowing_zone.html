@@ -73,36 +73,18 @@
                 // Centrage et mise à l'échelle automatique du tracé
                 let minX = 0, maxX = 0, minY = 0, maxY = 0;
                 let x = 0, y = 0, angle = -90;
-                const pathPoints = [{x: 0, y: 0, type: 'start'}];
-                console.log(`DEBUG: Traitement de ${vectors.length} vecteurs`);
-                
-                vectors.forEach((v, index) => {
-                    console.log(`Vecteur ${index}: distance=${v.distance}, angle=${v.relative_angle}`);
-                    
-                    // Appliquer la rotation
-                    if (v.relative_angle && v.relative_angle !== 0) {
-                        angle += v.relative_angle;
-                        console.log(`Rotation: nouvel angle = ${angle.toFixed(1)}°`);
-                        pathPoints.push({x: x, y: y, type: 'rotation', angle: angle});
-                    }
-                    
-                    // Appliquer le mouvement
-                    if (v.distance && v.distance > 0) {
-                        const angleRad = angle * Math.PI / 180;
-                        const newX = x + v.distance * Math.cos(angleRad);
-                        const newY = y + v.distance * Math.sin(angleRad);
-                        
-                        console.log(`Mouvement: de (${x.toFixed(1)}, ${y.toFixed(1)}) à (${newX.toFixed(1)}, ${newY.toFixed(1)})`);
-                        pathPoints.push({x: newX, y: newY, type: 'movement'});
-                        
-                        minX = Math.min(minX, x, newX);
-                        maxX = Math.max(maxX, x, newX);
-                        minY = Math.min(minY, y, newY);
-                        maxY = Math.max(maxY, y, newY);
-                        
-                        x = newX;
-                        y = newY;
-                    }
+                const pathPoints = [{x: 0, y: 0}];
+
+                vectors.forEach(v => {
+                    angle += v.relative_angle;
+                    const angleRad = angle * Math.PI / 180;
+                    x += v.distance * Math.cos(angleRad);
+                    y += v.distance * Math.sin(angleRad);
+                    pathPoints.push({x: x, y: y});
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
                 });
 
                 const pathWidth = maxX - minX;

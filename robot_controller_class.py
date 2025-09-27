@@ -15,7 +15,7 @@ class RobotController:
     MIN_SPEED_KMH = 0.05
     ACCEL_DURATION_S = 1.5
     RAMP_STEPS = 200
-    
+     
     def __init__(self, pi, motor_gauche_pins, motor_droit_pins):
         print("Initialisation du RobotController avec pigpio...")
         
@@ -34,7 +34,7 @@ class RobotController:
         self.ramp_thread = None
         self.current_speed_kmh = 0.0
         
-        self.speed_converter = SpeedConverter(steps_per_rev=400, wheel_diameter_mm=61.0)
+        self.speed_converter = SpeedConverter(steps_per_rev=400, wheel_diameter_mm = 61.0) # Diamètre roue d'entrainement
         
         self.motor_gauche.disable()
         self.motor_droit.disable()

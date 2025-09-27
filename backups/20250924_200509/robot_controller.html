@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrôle du Robot Tondeuse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .speed-bar { background-color: #e2e8f0; border-radius: 9999px; height: 1rem; width: 100%; overflow: hidden; }
+        .speed-fill { height: 100%; background-color: #4f46e5; transition: width 0.2s ease-in-out; }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-6 flex justify-center items-center min-h-screen">
+
+    <div class="bg-white rounded-3xl shadow-xl p-6 sm:p-8 md:p-10 w-full max-w-lg space-y-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-gray-800">Contrôle du Robot</h1>
+        
+        <div class="flex justify-between items-center bg-gray-50 p-4 rounded-xl shadow-inner">
+            <div class="text-center"><span id="speed-display" class="block text-2xl font-bold text-indigo-600">3.0</span><span class="text-sm text-gray-500">km/h</span></div>
+            <div class="text-center"><span id="angle-display" class="block text-2xl font-bold text-indigo-600">90</span><span class="text-sm text-gray-500">degrés</span></div>
+            <div class="text-center"><span id="diameter-display" class="block text-2xl font-bold text-indigo-600">150</span><span class="text-sm text-gray-500">cm</span></div>
+            <div class="text-center"><span id="status-display" class="block text-sm font-semibold text-green-500">Prêt</span><span class="text-sm text-gray-500">Statut</span></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+            <div></div><button id="forward-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-105"><svg class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg></button><div></div>
+            <button id="left-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-105"><svg class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg></button>
+            <button id="stop-btn" class="bg-red-500 hover:bg-red-600 text-white p-4 rounded-full shadow-lg transition transform hover:scale-105 font-bold">STOP</button>
+            <button id="right-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-105"><svg class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
+            <div></div><button id="backward-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-lg transition transform hover:scale-105"><svg class="h-8 w-8 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg></button><div></div>
+        </div>
+        
+        <div class="space-y-6">
+             <div class="flex items-center space-x-4"><span class="text-lg font-semibold w-20">Vitesse</span><button id="speed-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">-</button><div class="w-full speed-bar"><div id="speed-fill" class="speed-fill" style="width: 30%;"></div></div><button id="speed-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">+</button></div>
+            <div class="flex items-center space-x-4"><span class="text-lg font-semibold w-20">Angle</span><button id="angle-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">-</button><div class="w-full h-2 bg-gray-300 rounded-full overflow-hidden"><div id="angle-bar" class="bg-indigo-600 h-full" style="width: 50%;"></div></div><button id="angle-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">+</button></div>
+            <div class="flex items-center space-x-4"><span class="text-lg font-semibold w-20">Diamètre</span><button id="diameter-minus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">-</button><div class="w-full h-2 bg-gray-300 rounded-full overflow-hidden"><div id="diameter-bar" class="bg-indigo-600 h-full" style="width: 50%;"></div></div><button id="diameter-plus-btn" class="bg-gray-200 hover:bg-gray-300 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl transition">+</button></div>
+        </div>
+
+        <div class="flex justify-around items-center space-x-4 pt-4">
+            <button id="start-record-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Démarrer Enregistrement</button>
+        </div>
+        <div class="flex justify-around items-center space-x-4">
+            <button id="obstacle-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Simuler Obstacle</button>
+            <button id="resume-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition" style="display: none;">Reprendre</button>
+        </div>
+        <div class="mt-2 text-center">
+            <a href="/zones" class="w-full inline-block bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition">Voir les Zones</a>
+        </div>
+    </div>
+    
+    <!-- Modal d'enregistrement avancé -->
+    <div id="record-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50" style="display: none;">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-6xl max-h-[95vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-indigo-700">Enregistrement de Zone</h2>
+            <div class="flex space-x-2">
+                <span id="recording-status" class="px-3 py-1 bg-red-500 text-white text-sm rounded-full animate-pulse">REC</span>
+                <span id="points-counter" class="px-3 py-1 bg-blue-500 text-white text-sm rounded-full">0 points</span>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Colonne 1: Canvas de visualisation -->
+            <div class="lg:col-span-2">
+                <div class="relative bg-gray-100 rounded-lg shadow-inner mb-4" style="height: 500px;">
+                    <canvas id="live-canvas" class="w-full h-full rounded-lg"></canvas>
+                    
+                    <!-- Indicateurs de position -->
+                    <div class="absolute top-2 left-2 bg-white bg-opacity-95 rounded-lg p-3 text-sm shadow-md">
+                        <div class="font-semibold text-gray-800 mb-1">Position</div>
+                        <div>Distance totale: <span id="total-distance" class="font-bold text-blue-600">0.0 m</span></div>
+                        <div>Dernier segment: <span id="last-segment" class="font-bold text-green-600">0.0 m</span></div>
+                        <div>Segment actuel: <span id="current-segment" class="font-bold text-orange-600">0.0 m</span></div>
+                        <div>Angle actuel: <span id="current-angle" class="font-bold text-purple-600">0°</span></div>
+                        <div>Position: X=<span id="current-x" class="font-mono text-xs">0</span> Y=<span id="current-y" class="font-mono text-xs">0</span></div>
+                    </div>
+                    
+                    <!-- Indicateur de fermeture de zone -->
+                    <div id="closure-indicator" class="absolute top-2 right-2 bg-green-500 text-white rounded-lg p-2 text-sm shadow-md" style="display: none;">
+                        <div class="font-semibold">Zone fermable</div>
+                        <div>Distance au départ: <span id="closure-distance">0 m</span></div>
+                    </div>
+
+                    <!-- Indicateur de pause -->
+                    <div id="pause-indicator" class="absolute bottom-2 left-2 bg-yellow-500 text-white rounded-lg p-2 text-sm shadow-md" style="display: none;">
+                        <div class="font-semibold animate-pulse">PAUSE - Enregistrement suspendu</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonne 2: Contrôles -->
+            <div class="space-y-4">
+                <!-- Contrôles de paramètres -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-3">Paramètres Robot</h3>
+                    
+                    <!-- Vitesse -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium">Vitesse</span>
+                            <span id="modal-speed-display" class="text-lg font-bold text-indigo-600">3.0 km/h</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button id="modal-speed-minus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">-</button>
+                            <div class="flex-1 bg-gray-300 rounded-full h-2">
+                                <div id="modal-speed-fill" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 30%;"></div>
+                            </div>
+                            <button id="modal-speed-plus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Angle -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium">Angle</span>
+                            <span id="modal-angle-display" class="text-lg font-bold text-indigo-600">90°</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button id="modal-angle-minus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">-</button>
+                            <div class="flex-1 bg-gray-300 rounded-full h-2">
+                                <div id="modal-angle-fill" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 25%;"></div>
+                            </div>
+                            <button id="modal-angle-plus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Diamètre -->
+                    <div class="mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-medium">Diamètre</span>
+                            <span id="modal-diameter-display" class="text-lg font-bold text-indigo-600">150 cm</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button id="modal-diameter-minus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">-</button>
+                            <div class="flex-1 bg-gray-300 rounded-full h-2">
+                                <div id="modal-diameter-fill" class="bg-indigo-600 h-2 rounded-full transition-all" style="width: 50%;"></div>
+                            </div>
+                            <button id="modal-diameter-plus" class="bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contrôles de mouvement -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-3">Mouvements</h3>
+                    <div class="grid grid-cols-3 gap-2 mb-3">
+                        <div></div>
+                        <button id="modal-forward-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg flex flex-col items-center justify-center text-xs">
+                            <svg class="h-4 w-4 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                            </svg>
+                            Avant
+                        </button>
+                        <div></div>
+                        
+                        <button id="modal-left-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg flex flex-col items-center justify-center text-xs">
+                            <svg class="h-4 w-4 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Gauche
+                        </button>
+                        
+                        <button id="modal-stop-movement-btn" class="bg-red-500 hover:bg-red-600 text-white p-3 rounded-lg flex flex-col items-center justify-center text-xs font-bold">
+                            STOP
+                        </button>
+                        
+                        <button id="modal-right-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg flex flex-col items-center justify-center text-xs">
+                            <svg class="h-4 w-4 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            Droite
+                        </button>
+                        
+                        <div></div>
+                        <button id="modal-backward-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-lg flex flex-col items-center justify-center text-xs">
+                            <svg class="h-4 w-4 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                            Arrière
+                        </button>
+                        <div></div>
+                    </div>
+                </div>
+
+                <!-- Contrôles d'enregistrement -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-3">Enregistrement</h3>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <button id="modal-pause-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Pause
+                        </button>
+                        
+                        <button id="modal-resume-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center" style="display: none;">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h6m-3-3v6m1 4a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Reprise
+                        </button>
+                        
+                        <button id="modal-mark-point-btn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Point
+                        </button>
+                        
+                        <button id="undo-last-btn" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                            </svg>
+                            Annuler
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contrôles de zone -->
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-gray-800 mb-3">Gestion Zone</h3>
+                    <div class="space-y-2">
+                        <button id="close-zone-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Fermer Zone Auto
+                        </button>
+                        
+                        <button id="clear-all-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center">
+                            <svg class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Tout Effacer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Boutons finaux -->
+                <div class="space-y-2">
+                    <button id="modal-cancel-btn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl">
+                        Annuler Enregistrement
+                    </button>
+                    
+                    <button id="modal-stop-record-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl">
+                        Terminer et Sauvegarder
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const API_URL = '/api/command';
+        
+        // Éléments DOM
+        const statusDisplay = document.getElementById('status-display');
+        const speedDisplay = document.getElementById('speed-display');
+        const angleDisplay = document.getElementById('angle-display');
+        const diameterDisplay = document.getElementById('diameter-display');
+        const speedFill = document.getElementById('speed-fill');
+        const angleBar = document.getElementById('angle-bar');
+        const diameterBar = document.getElementById('diameter-bar');
+        const modal = document.getElementById('record-modal');
+        const liveCanvas = document.getElementById('live-canvas');
+        
+        // Variables globales
+        let currentSpeed = 3.0;
+        let currentAngle = 90.0;
+        let currentDiameter = 150.0;
+        let lastStatusMessage = "";
+        let pollingInterval = null;
+        let recordingVectors = [];
+        let lastRecordingUpdate = "";
+        let isRecordingPaused = false;
+        
+        // Variables pour le suivi temps réel CORRIGÉES
+        let currentMovementStartTime = null;
+        let currentMovementStartPos = {x: 0, y: 0};
+        let isCurrentlyMoving = false;
+        let currentMovementType = null;
+
+        // Constantes
+        const MAX_SPEED = 10.0, MIN_SPEED = 0.5, SPEED_STEP = 0.5;
+        const MAX_ANGLE = 360.0, MIN_ANGLE = 5.0, ANGLE_STEP = 5.0;
+        const MAX_DIAMETER = 300.0, MIN_DIAMETER = 0.0, DIAMETER_STEP = 10.0;
+
+        // Fonctions utilitaires
+        function calculateDistance(p1, p2) {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function updateStatusDisplay(message, type = 'info') {
+            statusDisplay.textContent = message;
+            statusDisplay.className = '';
+            
+            const typeClasses = {
+                success: 'text-green-500',
+                error: 'text-red-500',
+                info: 'text-gray-500',
+                busy: 'text-blue-500',
+                warning: 'text-yellow-600'
+            };
+            
+            statusDisplay.classList.add('block', 'text-sm', 'font-semibold', typeClasses[type]);
+            
+            if (message && message.toLowerCase().includes('pause')) {
+                document.getElementById('obstacle-btn').style.display = 'none';
+                document.getElementById('resume-btn').style.display = 'block';
+            } else {
+                document.getElementById('obstacle-btn').style.display = 'block';
+                document.getElementById('resume-btn').style.display = 'none';
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                if (!response.ok) return;
+                const data = await response.json();
+                
+                currentSpeed = data.speed;
+                currentAngle = data.angle;
+                currentDiameter = data.diameter;
+                updateUI();
+                updateModalParameters();
+                
+                if (data.status !== lastStatusMessage) {
+                    let statusType = 'info';
+                    if (data.status === "Prêt") statusType = 'success';
+                    else if (data.status.toLowerCase().includes('pause')) statusType = 'warning';
+                    else if (data.status !== "Prêt") statusType = 'busy';
+                    updateStatusDisplay(data.status, statusType);
+                }
+            } catch (error) {
+                updateStatusDisplay("Déconnecté", "error");
+            }
+        }
+
+        // FONCTION CORRIGÉE - Affichage temps réel avec segment actuel
+        function drawLivePath(vectors) {
+            const canvas = document.getElementById('live-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculer tous les points du parcours enregistré
+            const points = [{ x: 0, y: 0 }];
+            let x = 0, y = 0, angle = -90;
+            let totalDistance = 0;
+            
+            for (const vector of vectors) {
+                if (vector.relative_angle) {
+                    angle += vector.relative_angle;
+                }
+                if (vector.distance && vector.distance > 0) {
+                    const angleRad = (angle * Math.PI) / 180;
+                    const newX = x + vector.distance * Math.cos(angleRad);
+                    const newY = y + vector.distance * Math.sin(angleRad);
+                    points.push({ x: newX, y: newY });
+                    totalDistance += vector.distance;
+                    x = newX;
+                    y = newY;
+                }
+            }
+            
+            // CORRECTION: Ajouter le point de mouvement en cours
+            let currentSegmentLength = 0;
+            if (isCurrentlyMoving && currentMovementStartTime && currentMovementType) {
+                const elapsed = (Date.now() - currentMovementStartTime) / 1000;
+                const speedCmPerSec = (currentSpeed * 100000) / 3600;
+                currentSegmentLength = elapsed * speedCmPerSec;
+                
+                if (currentSegmentLength > 5) { // Afficher seulement si > 5cm
+                    const angleRad = (angle * Math.PI) / 180;
+                    const direction = currentMovementType === 'forward' ? 1 : -1;
+                    const currentX = x + currentSegmentLength * Math.cos(angleRad) * direction;
+                    const currentY = y + currentSegmentLength * Math.sin(angleRad) * direction;
+                    points.push({ x: currentX, y: currentY, isCurrent: true });
+                }
+            }
+            
+            const currentPosition = { x, y, angle };
+            
+            if (points.length === 0) {
+                updateStats([], currentPosition, currentSegmentLength);
+                return;
+            }
+            
+            // Calcul de l'échelle et centrage
+            const margin = 30;
+            if (points.length > 1) {
+                const minX = Math.min(...points.map(p => p.x));
+                const maxX = Math.max(...points.map(p => p.x));
+                const minY = Math.min(...points.map(p => p.y));
+                const maxY = Math.max(...points.map(p => p.y));
+                
+                const width = maxX - minX || 200;
+                const height = maxY - minY || 200;
+                
+                const scaleX = (canvas.width - 2 * margin) / width;
+                const scaleY = (canvas.height - 2 * margin) / height;
+                const scale = Math.min(scaleX, scaleY, 3);
+                
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const offsetX = centerX - ((minX + maxX) / 2) * scale;
+                const offsetY = centerY - ((minY + maxY) / 2) * scale;
+                
+                // Dessiner la grille
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 5]);
+                
+                const gridSpacing = 100; // 1 mètre
+                for (let i = -20; i <= 20; i++) {
+                    const gridX = centerX + i * gridSpacing * scale / 100;
+                    const gridY = centerY + i * gridSpacing * scale / 100;
+                    
+                    if (gridX >= 0 && gridX <= canvas.width) {
+                        ctx.beginPath();
+                        ctx.moveTo(gridX, 0);
+                        ctx.lineTo(gridX, canvas.height);
+                        ctx.stroke();
+                    }
+                    
+                    if (gridY >= 0 && gridY <= canvas.height) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, gridY);
+                        ctx.lineTo(canvas.width, gridY);
+                        ctx.stroke();
+                    }
+                }
+                ctx.setLineDash([]);
+                
+                // Dessiner le parcours enregistré (bleu)
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                ctx.beginPath();
+                let lastRecordedIndex = points.findIndex(p => p.isCurrent);
+                if (lastRecordedIndex === -1) lastRecordedIndex = points.length;
+                
+                for (let i = 0; i < lastRecordedIndex; i++) {
+                    const screenX = offsetX + points[i].x * scale;
+                    const screenY = offsetY + points[i].y * scale;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(screenX, screenY);
+                    } else {
+                        ctx.lineTo(screenX, screenY);
+                    }
+                }
+                ctx.stroke();
+                
+                // Dessiner le segment en cours (orange)
+                if (isCurrentlyMoving && lastRecordedIndex < points.length) {
+                    ctx.strokeStyle = '#f97316';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([10, 5]);
+                    
+                    const startPoint = points[lastRecordedIndex - 1];
+                    const endPoint = points[lastRecordedIndex];
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(offsetX + startPoint.x * scale, offsetY + startPoint.y * scale);
+                    ctx.lineTo(offsetX + endPoint.x * scale, offsetY + endPoint.y * scale);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                // Point de départ (vert)
+                const startX = offsetX + points[0].x * scale;
+                const startY = offsetY + points[0].y * scale;
+                ctx.beginPath();
+                ctx.arc(startX, startY, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = '#10b981';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Texte "START"
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 8px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('START', startX, startY + 2);
+                
+                // Point actuel (rouge/jaune selon état)
+                if (points.length > 1) {
+                    const endPoint = points[points.length - 1];
+                    const endX = offsetX + endPoint.x * scale;
+                    const endY = offsetY + endPoint.y * scale;
+                    ctx.beginPath();
+                    ctx.arc(endX, endY, 10, 0, 2 * Math.PI);
+                    ctx.fillStyle = isRecordingPaused ? '#fbbf24' : (isCurrentlyMoving ? '#f97316' : '#ef4444');
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    // Flèche de direction
+                    const arrowAngle = (currentPosition.angle * Math.PI) / 180;
+                    const arrowLength = 20;
+                    
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(
+                        endX + Math.cos(arrowAngle) * arrowLength,
+                        endY + Math.sin(arrowAngle) * arrowLength
+                    );
+                    ctx.stroke();
+                }
+                
+                // Vérifier fermeture zone
+                if (points.length > 3) {
+                    const currentPos = points[points.length - 1];
+                    const startPos = points[0];
+                    const distanceToStart = calculateDistance(currentPos, startPos);
+                    
+                    if (distanceToStart < 150) {
+                        ctx.strokeStyle = '#10b981';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([15, 10]);
+                        ctx.beginPath();
+                        ctx.moveTo(offsetX + currentPos.x * scale, offsetY + currentPos.y * scale);
+                        ctx.lineTo(offsetX + startPos.x * scale, offsetY + startPos.y * scale);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        
+                        document.getElementById('closure-indicator').style.display = 'block';
+                        document.getElementById('closure-distance').textContent = (distanceToStart / 100).toFixed(1) + ' m';
+                    } else {
+                        document.getElementById('closure-indicator').style.display = 'none';
+                    }
+                }
+            }
+            
+            updateStats(points, currentPosition, currentSegmentLength);
+        }
+
+        function updateStats(points, currentPos, currentSegment = 0) {
+            let totalDistance = 0;
+            let lastSegmentDistance = 0;
+            
+            for (let i = 1; i < points.length; i++) {
+                if (!points[i].isCurrent) {
+                    const segmentDist = calculateDistance(points[i-1], points[i]);
+                    totalDistance += segmentDist;
+                    lastSegmentDistance = segmentDist;
+                }
+            }
+            
+            document.getElementById('total-distance').textContent = (totalDistance / 100).toFixed(1) + ' m';
+            document.getElementById('last-segment').textContent = (lastSegmentDistance / 100).toFixed(1) + ' m';
+            document.getElementById('current-segment').textContent = (currentSegment / 100).toFixed(1) + ' m';
+            document.getElementById('current-angle').textContent = currentPos.angle.toFixed(0) + '°';
+            document.getElementById('current-x').textContent = (currentPos.x / 100).toFixed(1) + 'm';
+            document.getElementById('current-y').textContent = (currentPos.y / 100).toFixed(1) + 'm';
+            document.getElementById('points-counter').textContent = points.filter(p => !p.isCurrent).length + ' points';
+        }
+
+        async function pollLivePath() {
+            try {
+                const response = await fetch('/api/live_path');
+                const vectors = await response.json();
+                
+                const currentUpdate = JSON.stringify(vectors);
+                if (currentUpdate !== lastRecordingUpdate || isCurrentlyMoving) {
+                    recordingVectors = vectors;
+                    drawLivePath(vectors);
+                    lastRecordingUpdate = currentUpdate;
+                }
+            } catch (error) {
+                console.error("Erreur de polling:", error);
+            }
+        }
+
+        // CORRECTION: Fonction pour fermer automatiquement la zone
+        function closeZoneAutomatically() {
+            if (recordingVectors.length < 3) {
+                alert("Il faut au moins 3 points pour fermer une zone !");
+                return;
+            }
+            
+            // Calculer la position actuelle
+            const currentPos = getCurrentPositionFromVectors();
+            const startPos = { x: 0, y: 0 };
+            const distanceToStart = calculateDistance(currentPos, startPos);
+            
+            if (distanceToStart > 200) {
+                const confirm = window.confirm(
+                    `La position actuelle est à ${(distanceToStart / 100).toFixed(1)}m du point de départ.\n` +
+                    "Voulez-vous vraiment fermer automatiquement la zone ?"
+                );
+                if (!confirm) return;
+            }
+            
+            // Calculer l'angle pour revenir au point de départ
+            const dx = startPos.x - currentPos.x;
+            const dy = startPos.y - currentPos.y;
+            const targetAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const currentAngle = currentPos.angle;
+            
+            let relativeAngle = targetAngle - currentAngle;
+            while (relativeAngle <= -180) relativeAngle += 360;
+            while (relativeAngle > 180) relativeAngle -= 360;
+            
+            // CORRECTION: Envoyer les commandes au serveur au lieu de simuler
+            const executeClosing = async () => {
+                try {
+                    // Si rotation nécessaire
+                    if (Math.abs(relativeAngle) > 1) {
+                        const turnCommand = relativeAngle > 0 ? 'turn_right' : 'turn_left';
+                        await sendCommand(turnCommand);
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    
+                    // Mouvement vers le départ
+                    await sendCommand('forward');
+                    await new Promise(resolve => setTimeout(resolve, (distanceToStart / ((currentSpeed * 100000) / 3600)) * 1000));
+                    await sendCommand('stop');
+                    
+                    alert(`Zone fermée automatiquement ! Distance de fermeture: ${(distanceToStart / 100).toFixed(1)}m`);
+                } catch (error) {
+                    alert("Erreur lors de la fermeture automatique de la zone");
+                }
+            };
+            
+            executeClosing();
+        }
+
+        async function stopAndSaveRecording() {
+            // Arrêter mouvement en cours
+            if (isCurrentlyMoving) {
+                await sendCommand('stop');
+                isCurrentlyMoving = false;
+            }
+            
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+            modal.style.display = 'none';
+            
+            let existingZonesText = 'Noms déjà utilisés :';
+            try {
+                const response = await fetch('/api/zones');
+                const zones = await response.json();
+                if (zones.length > 0) {
+                    existingZonesText += '\n- ' + zones.map(z => z.name).join('\n- ');
+                } else {
+                    existingZonesText = 'Aucune zone enregistrée.';
+                }
+            } catch (e) {
+                existingZonesText = "Attention : impossible de vérifier les noms.";
+            }
+            
+            const zoneName = prompt(`Entrez un nom pour cette zone :\n\n${existingZonesText}`);
+            if (zoneName && zoneName.trim() !== "") {
+                sendCommand('stop_recording', { zone_name: zoneName.trim() });
+            }
+        }
+
+        // Event Listeners pour les contrôles principaux
+        const continuousCommands = {
+            'forward-btn': 'forward',
+            'backward-btn': 'backward',
+            'left-btn': 'turn_left',
+            'right-btn': 'turn_right'
+        };
+
+        for (const [btnId, cmd] of Object.entries(continuousCommands)) {
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('mousedown', () => sendCommand(cmd));
+        }
+        
+        // CORRECTION: STOP déclenche l'enregistrement du segment
+        document.getElementById('stop-btn').addEventListener('click', async () => {
+            if (pollingInterval) {
+                // Si en enregistrement, d'abord STOP puis mise à jour
+                await sendCommand('stop');
+                isCurrentlyMoving = false;
+                // Attendre un peu puis forcer la mise à jour
+                setTimeout(() => {
+                    pollLivePath();
+                }, 300);
+            } else {
+                await sendCommand('stop');
+            }
+        });
+        
+        // Event listeners pour les contrôles de paramètres principaux
+        document.getElementById('speed-plus-btn').addEventListener('click', () => {
+            currentSpeed = Math.min(MAX_SPEED, currentSpeed + SPEED_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_speed', { speed: currentSpeed });
+        });
+
+        document.getElementById('speed-minus-btn').addEventListener('click', () => {
+            currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_speed', { speed: currentSpeed });
+        });
+
+        document.getElementById('angle-plus-btn').addEventListener('click', () => {
+            currentAngle = Math.min(MAX_ANGLE, currentAngle + ANGLE_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_angle', { angle: currentAngle });
+        });
+
+        document.getElementById('angle-minus-btn').addEventListener('click', () => {
+            currentAngle = Math.max(MIN_ANGLE, currentAngle - ANGLE_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_angle', { angle: currentAngle });
+        });
+
+        document.getElementById('diameter-plus-btn').addEventListener('click', () => {
+            currentDiameter = Math.min(MAX_DIAMETER, currentDiameter + DIAMETER_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_diameter', { diameter: currentDiameter });
+        });
+
+        document.getElementById('diameter-minus-btn').addEventListener('click', () => {
+            currentDiameter = Math.max(MIN_DIAMETER, currentDiameter - DIAMETER_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_diameter', { diameter: currentDiameter });
+        });
+        
+        // Event listeners pour les boutons d'action
+        document.getElementById('start-record-btn').addEventListener('click', () => {
+            sendCommand('start_recording');
+            modal.style.display = 'flex';
+            recordingVectors = [];
+            isRecordingPaused = false;
+            isCurrentlyMoving = false;
+            updateModalParameters();
+            pollingInterval = setInterval(pollLivePath, 200); // Plus fréquent pour temps réel
+        });
+        
+        document.getElementById('obstacle-btn').addEventListener('click', () => sendCommand('simulate_obstacle'));
+        document.getElementById('resume-btn').addEventListener('click', () => sendCommand('resume'));
+
+        // Event listeners pour les contrôles du modal - Paramètres
+        document.getElementById('modal-speed-plus').addEventListener('click', () => {
+            currentSpeed = Math.min(MAX_SPEED, currentSpeed + SPEED_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_speed', { speed: currentSpeed });
+        });
+
+        document.getElementById('modal-speed-minus').addEventListener('click', () => {
+            currentSpeed = Math.max(MIN_SPEED, currentSpeed - SPEED_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_speed', { speed: currentSpeed });
+        });
+
+        document.getElementById('modal-angle-plus').addEventListener('click', () => {
+            currentAngle = Math.min(MAX_ANGLE, currentAngle + ANGLE_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_angle', { angle: currentAngle });
+        });
+
+        document.getElementById('modal-angle-minus').addEventListener('click', () => {
+            currentAngle = Math.max(MIN_ANGLE, currentAngle - ANGLE_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_angle', { angle: currentAngle });
+        });
+
+        document.getElementById('modal-diameter-plus').addEventListener('click', () => {
+            currentDiameter = Math.min(MAX_DIAMETER, currentDiameter + DIAMETER_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_diameter', { diameter: currentDiameter });
+        });
+
+        document.getElementById('modal-diameter-minus').addEventListener('click', () => {
+            currentDiameter = Math.max(MIN_DIAMETER, currentDiameter - DIAMETER_STEP);
+            updateUI();
+            updateModalParameters();
+            sendCommand('set_diameter', { diameter: currentDiameter });
+        });
+
+        // Event listeners pour les boutons de mouvement du modal
+        const modalMovementCommands = {
+            'modal-forward-btn': 'forward',
+            'modal-backward-btn': 'backward',
+            'modal-left-btn': 'turn_left',
+            'modal-right-btn': 'turn_right'
+        };
+
+        for (const [btnId, cmd] of Object.entries(modalMovementCommands)) {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.addEventListener('mousedown', () => sendCommand(cmd));
+            }
+        }
+
+        // CORRECTION: STOP modal déclenche aussi l'enregistrement
+        document.getElementById('modal-stop-movement-btn').addEventListener('click', async () => {
+            await sendCommand('stop');
+            isCurrentlyMoving = false;
+            setTimeout(() => {
+                pollLivePath();
+            }, 300);
+        });
+
+        // Event listeners pour les contrôles d'enregistrement
+        document.getElementById('modal-pause-btn').addEventListener('click', () => {
+            isRecordingPaused = true;
+            isCurrentlyMoving = false;
+            document.getElementById('modal-pause-btn').style.display = 'none';
+            document.getElementById('modal-resume-btn').style.display = 'block';
+            document.getElementById('pause-indicator').style.display = 'block';
+            document.getElementById('recording-status').textContent = 'PAUSE';
+            document.getElementById('recording-status').classList.remove('animate-pulse');
+            sendCommand('simulate_obstacle');
+        });
+
+        document.getElementById('modal-resume-btn').addEventListener('click', () => {
+            isRecordingPaused = false;
+            document.getElementById('modal-pause-btn').style.display = 'block';
+            document.getElementById('modal-resume-btn').style.display = 'none';
+            document.getElementById('pause-indicator').style.display = 'none';
+            document.getElementById('recording-status').textContent = 'REC';
+            document.getElementById('recording-status').classList.add('animate-pulse');
+            sendCommand('resume');
+        });
+
+        document.getElementById('modal-mark-point-btn').addEventListener('click', async () => {
+            await sendCommand('stop');
+            isCurrentlyMoving = false;
+            setTimeout(() => {
+                pollLivePath();
+            }, 500);
+        });
+
+        document.getElementById('undo-last-btn').addEventListener('click', () => {
+            if (recordingVectors.length > 0) {
+                recordingVectors.pop();
+                drawLivePath(recordingVectors);
+            }
+        });
+
+        document.getElementById('clear-all-btn').addEventListener('click', () => {
+            if (confirm("Voulez-vous vraiment effacer tout l'enregistrement ?")) {
+                recordingVectors = [];
+                isCurrentlyMoving = false;
+                drawLivePath(recordingVectors);
+                fetch('/api/clear_recording', { method: 'POST' }).catch(console.error);
+            }
+        });
+
+        document.getElementById('close-zone-btn').addEventListener('click', closeZoneAutomatically);
+
+        document.getElementById('modal-cancel-btn').addEventListener('click', () => {
+            if (confirm("Voulez-vous vraiment annuler l'enregistrement en cours ?")) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+                modal.style.display = 'none';
+                isCurrentlyMoving = false;
+                sendCommand('stop');
+            }
+        });
+
+        document.getElementById('modal-stop-record-btn').addEventListener('click', stopAndSaveRecording);
+
+        // Initialisation
+        updateUI();
+        updateModalParameters();
+        setInterval(fetchStatus, 2500);
+    });
+    </script>
+</body>
+</html>UI() {
+            speedDisplay.textContent = currentSpeed.toFixed(1);
+            angleDisplay.textContent = currentAngle.toFixed(0);
+            diameterDisplay.textContent = currentDiameter.toFixed(0);
+            
+            const speedPercent = ((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100;
+            const anglePercent = ((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100;
+            const diameterPercent = (currentDiameter / MAX_DIAMETER) * 100;
+            
+            speedFill.style.width = speedPercent + '%';
+            angleBar.style.width = anglePercent + '%';
+            diameterBar.style.width = diameterPercent + '%';
+        }
+
+        function updateModalParameters() {
+            document.getElementById('modal-speed-display').textContent = currentSpeed.toFixed(1) + ' km/h';
+            document.getElementById('modal-angle-display').textContent = currentAngle.toFixed(0) + '°';
+            document.getElementById('modal-diameter-display').textContent = currentDiameter.toFixed(0) + ' cm';
+            
+            const speedPercent = ((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100;
+            const anglePercent = ((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100;
+            const diameterPercent = (currentDiameter / MAX_DIAMETER) * 100;
+            
+            document.getElementById('modal-speed-fill').style.width = speedPercent + '%';
+            document.getElementById('modal-angle-fill').style.width = anglePercent + '%';
+            document.getElementById('modal-diameter-fill').style.width = diameterPercent + '%';
+        }
+
+        async function sendCommand(command, params = {}) {
+            try {
+                // CORRECTION: Gérer le début de mouvement
+                if (command === 'forward' || command === 'backward') {
+                    isCurrentlyMoving = true;
+                    currentMovementType = command;
+                    currentMovementStartTime = Date.now();
+                    // Calculer position de départ basée sur les vecteurs existants
+                    currentMovementStartPos = getCurrentPositionFromVectors();
+                }
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command, params })
+                });
+                const data = await response.json();
+                if (data.message) {
+                    lastStatusMessage = data.message;
+                    updateStatusDisplay(data.message, response.ok ? 'success' : 'error');
+                }
+            } catch (error) {
+                lastStatusMessage = 'Erreur réseau';
+                updateStatusDisplay(lastStatusMessage, 'error');
+                isCurrentlyMoving = false;
+            }
+        }
+
+        function getCurrentPositionFromVectors() {
+            let x = 0, y = 0, angle = -90;
+            for (const vector of recordingVectors) {
+                if (vector.relative_angle) angle += vector.relative_angle;
+                if (vector.distance && vector.distance > 0) {
+                    const angleRad = (angle * Math.PI) / 180;
+                    x += vector.distance * Math.cos(angleRad);
+                    y += vector.distance * Math.sin(angleRad);
+                }
+            }
+            return {x, y, angle};
+        }
+
+        function update

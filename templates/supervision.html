@@ -21,6 +21,12 @@
         <div class="mt-6">
             <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">&larr; Retour au panneau de contrôle</a>
         </div>
+        <div class="mt-4 text-center">
+            <button id="stop-mowing-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg mr-4" style="display: none;">
+                Arrêter la Tonte
+            </button>
+            <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">&larr; Retour au panneau de contrôle</a>
+        </div>
     </div>
 
     <script>
@@ -113,6 +119,50 @@
             }
             
             Math.radians = (degrees) => degrees * Math.PI / 180;
+
+            // Ajoutez dans le JavaScript de supervision.html
+            document.addEventListener('DOMContentLoaded', () => {
+                const stopBtn = document.getElementById('stop-mowing-btn');
+                const statusText = document.getElementById('status-text');
+                
+                async function fetchDataAndDraw() {
+                    try {
+                        const statusResponse = await fetch('/api/live_status');
+                        const liveData = await statusResponse.json();
+                        
+                        statusText.textContent = `Statut : ${liveData.status}`;
+                        
+                        // Afficher le bouton d'arrêt si tonte en cours
+                        if (liveData.status.toLowerCase().includes('tonte')) {
+                            stopBtn.style.display = 'inline-block';
+                        } else {
+                            stopBtn.style.display = 'none';
+                        }
+                        
+                        // ... reste du code existant
+                        
+                    } catch (error) {
+                        console.error("Erreur de mise à jour:", error);
+                        statusText.textContent = "Erreur de connexion.";
+                    }
+                }
+                
+                // Gestionnaire du bouton d'arrêt
+                stopBtn.addEventListener('click', async () => {
+                    if (confirm('Voulez-vous vraiment arrêter la tonte en cours ?')) {
+                        try {
+                            const response = await fetch('/api/stop_autonomous', { method: 'POST' });
+                            const data = await response.json();
+                            alert(data.message);
+                        } catch (error) {
+                            alert('Erreur lors de l\'arrêt de la tonte');
+                        }
+                    }
+                });
+    
+    // Lancer le polling
+    setInterval(fetchDataAndDraw, 1000);
+});
 
             // Lancer le polling
             setInterval(fetchDataAndDraw, 1000); // Mettre à jour toutes les secondes

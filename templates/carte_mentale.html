@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture Robot Tondeuse - Carte Mentale</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow-x: auto;
+        }
+        
+        .container {
+            min-width: 1400px;
+            min-height: 1000px;
+            position: relative;
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .node {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1f2937;
+            border-radius: 15px;
+            padding: 15px 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+            z-index: 100;
+        }
+        
+        .node.main {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 1.4em;
+            padding: 25px 30px;
+            border: 3px solid #fbbf24;
+        }
+        
+        .node.server {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+        
+        .node.database {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: white;
+        }
+        
+        .node.ui {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+        
+        .node.hardware {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+        }
+        
+        .node.function {
+            background: rgba(255, 255, 255, 0.9);
+            color: #374151;
+            font-size: 0.9em;
+            padding: 10px 15px;
+        }
+        
+        .connection {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            transform-origin: left center;
+            height: 3px;
+            border-radius: 2px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .connection.bidirectional::after {
+            content: '⟷';
+            position: absolute;
+            right: -15px;
+            top: -10px;
+            background: white;
+            color: #1f2937;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .connection.unidirectional::after {
+            content: '→';
+            position: absolute;
+            right: -10px;
+            top: -8px;
+            color: #1f2937;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .details {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            display: none;
+            z-index: 200;
+        }
+        
+        .legend {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Architecture Système Robot Tondeuse</h1>
+        
+        <!-- Noeud central -->
+        <div class="node main" id="main-system" style="top: 400px; left: 600px;">
+            ROBOT TONDEUSE
+            <div style="font-size: 0.6em; margin-top: 5px;">Système Central</div>
+        </div>
+        
+        <!-- Couche Serveur -->
+        <div class="node server" id="flask-server" style="top: 200px; left: 600px;">
+            Flask Server
+            <div style="font-size: 0.7em; margin-top: 5px;">server_for_robot.py</div>
+        </div>
+        
+        <!-- Base de données -->
+        <div class="node database" id="database" style="top: 200px; left: 350px;">
+            Database Manager
+            <div style="font-size: 0.7em; margin-top: 5px;">SQLite + Métadonnées</div>
+        </div>
+        
+        <!-- Contrôleur Robot -->
+        <div class="node hardware" id="robot-controller" style="top: 600px; left: 600px;">
+            Robot Controller
+            <div style="font-size: 0.7em; margin-top: 5px;">Moteurs + PiGPIO</div>
+        </div>
+        
+        <!-- Interface Web -->
+        <div class="node ui" id="web-interface" style="top: 50px; left: 600px;">
+            Interface Web
+            <div style="font-size: 0.7em; margin-top: 5px;">HTML + JavaScript</div>
+        </div>
+        
+        <!-- Fonctions du serveur -->
+        <div class="node function" style="top: 300px; left: 800px;">handle_command()</div>
+        <div class="node function" style="top: 350px; left: 850px;">process_raw_path_to_vectors()</div>
+        <div class="node function" style="top: 400px; left: 900px;">merge_vectors()</div>
+        <div class="node function" style="top: 450px; left: 850px;">generate_mowing_path()</div>
+        <div class="node function" style="top: 500px; left: 800px;">run_autonomous_mowing()</div>
+        
+        <!-- Fonctions de la base de données -->
+        <div class="node function" style="top: 300px; left: 150px;">save_zone_with_metadata()</div>
+        <div class="node function" style="top: 350px; left: 100px;">get_zone_by_name()</div>
+        <div class="node function" style="top: 400px; left: 50px;">get_all_zones()</div>
+        <div class="node function" style="top: 450px; left: 100px;">save_mowing_history()</div>
+        
+        <!-- Interface utilisateur -->
+        <div class="node function" style="top: 150px; left: 400px;">Modal Enregistrement</div>
+        <div class="node function" style="top: 100px; left: 500px;">Contrôles Robot</div>
+        <div class="node function" style="top: 100px; left: 700px;">Canvas Visualisation</div>
+        <div class="node function" style="top: 150px; left: 800px;">Liste des Zones</div>
+        
+        <!-- Hardware -->
+        <div class="node hardware" style="top: 700px; left: 450px;">Moteur Gauche</div>
+        <div class="node hardware" style="top: 700px; left: 600px;">Capteurs</div>
+        <div class="node hardware" style="top: 700px; left: 750px;">Moteur Droit</div>
+        
+        <!-- Routes API -->
+        <div class="node server" style="top: 250px; left: 950px;">/api/command</div>
+        <div class="node server" style="top: 300px; left: 1000px;">/api/status</div>
+        <div class="node server" style="top: 350px; left: 1050px;">/api/live_path</div>
+        <div class="node server" style="top: 400px; left: 1000px;">/api/zones</div>
+        <div class="node server" style="top: 450px; left: 950px;">/api/generate_path</div>
+        
+        <!-- Types de zones -->
+        <div class="node database" style="top: 100px; left: 200px;">Zones Périmètre</div>
+        <div class="node database" style="top: 150px; left: 150px;">Parcours Simple</div>
+        <div class="node database" style="top: 200px; left: 100px;">Parcours Avancé</div>
+        
+        <!-- États du robot -->
+        <div class="node hardware" style="top: 750px; left: 300px;">Prêt</div>
+        <div class="node hardware" style="top: 800px; left: 350px;">En mouvement</div>
+        <div class="node hardware" style="top: 850px; left: 400px;">En pause</div>
+        <div class="node hardware" style="top: 800px; left: 500px;">Enregistrement</div>
+        <div class="node hardware" style="top: 750px; left: 550px;">Tonte auto</div>
+    </div>
+    
+    <div class="details" id="details">
+        <h3 id="details-title">Détails</h3>
+        <p id="details-content">Cliquez sur un élément pour voir les détails</p>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #ef4444, #dc2626);"></div>
+            <span>Système Central</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+            <span>Serveur Flask</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);"></div>
+            <span>Base de Données</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #f59e0b, #d97706);"></div>
+            <span>Interface Web</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: linear-gradient(135deg, #6366f1, #4f46e5);"></div>
+            <span>Hardware</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: rgba(255, 255, 255, 0.9);"></div>
+            <span>Fonctions</span>
+        </div>
+    </div>
+
+    <script>
+        // Données détaillées pour chaque composant
+        const componentDetails = {
+            'main-system': {
+                title: 'Robot Tondeuse - Système Central',
+                content: `Architecture complète du système autonome de tonte.
+                
+                Fonctionnalités principales :
+                • Enregistrement de zones par apprentissage
+                • Génération automatique de parcours
+                • Tonte autonome avec évitement d'obstacles
+                • Interface web de contrôle temps réel
+                • Historique complet des opérations`
+            },
+            'flask-server': {
+                title: 'Serveur Flask',
+                content: `Serveur web Python gérant toute la logique métier.
+                
+                Responsabilités :
+                • API REST pour interface web
+                • Traitement des commandes robot  
+                • Conversion parcours → vecteurs
+                • Génération de parcours de tonte
+                • Gestion états et positions temps réel`
+            },
+            'database': {
+                title: 'Database Manager',
+                content: `Gestionnaire SQLite avec métadonnées étendues.
+                
+                Tables principales :
+                • zones : Périmètres et parcours + métadonnées
+                • mowing_history : Historique des tontes
+                
+                Fonctionnalités :
+                • Migration automatique de schéma
+                • Types de zones (périmètre/parcours/avancé)
+                • Horodatage complet`
+            },
+            'robot-controller': {
+                title: 'Contrôleur Robot',
+                content: `Interface hardware via PiGPIO.
+                
+                Contrôles :
+                • 2 moteurs pas-à-pas (gauche/droit)
+                • Mouvements : avant/arrière/rotation
+                • Vitesse variable (0.5-10 km/h)
+                • Angles de rotation configurables
+                • Gestion pause/reprise`
+            },
+            'web-interface': {
+                title: 'Interface Web',
+                content: `Interface utilisateur responsive.
+                
+                Composants :
+                • Contrôles manuels du robot
+                • Modal d'enregistrement avec visualisation
+                • Liste et gestion des zones
+                • Supervision tonte en temps réel
+                • Canvas de visualisation parcours`
+            }
+        };
+
+        // Ajouter les événements de clic
+        document.querySelectorAll('.node').forEach(node => {
+            node.addEventListener('click', () => {
+                const details = componentDetails[node.id];
+                if (details) {
+                    document.getElementById('details-title').textContent = details.title;
+                    document.getElementById('details-content').textContent = details.content;
+                    document.getElementById('details').style.display = 'block';
+                } else {
+                    document.getElementById('details').style.display = 'none';
+                }
+            });
+        });
+
+        // Masquer les détails si on clique ailleurs
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.node') && !e.target.closest('.details')) {
+                document.getElementById('details').style.display = 'none';
+            }
+        });
+
+        // Dessiner les connexions après le chargement
+        window.addEventListener('load', () => {
+            drawConnections();
+        });
+
+        function drawConnections() {
+            const connections = [
+                // Interface ↔ Serveur
+                { from: 'web-interface', to: 'flask-server', type: 'bidirectional' },
+                
+                // Serveur ↔ Base de données  
+                { from: 'flask-server', to: 'database', type: 'bidirectional' },
+                
+                // Serveur ↔ Robot
+                { from: 'flask-server', to: 'main-system', type: 'bidirectional' },
+                
+                // Système ↔ Contrôleur
+                { from: 'main-system', to: 'robot-controller', type: 'bidirectional' }
+            ];
+
+            connections.forEach(conn => {
+                const fromElement = document.getElementById(conn.from);
+                const toElement = document.getElementById(conn.to);
+                
+                if (fromElement && toElement) {
+                    createConnection(fromElement, toElement, conn.type);
+                }
+            });
+        }
+
+        function createConnection(from, to, type) {
+            const fromRect = from.getBoundingClientRect();
+            const toRect = to.getBoundingClientRect();
+            const container = document.querySelector('.container').getBoundingClientRect();
+            
+            const fromX = fromRect.left + fromRect.width/2 - container.left;
+            const fromY = fromRect.top + fromRect.height/2 - container.top;
+            const toX = toRect.left + toRect.width/2 - container.left;
+            const toY = toRect.top + toRect.height/2 - container.top;
+            
+            const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+            const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+            
+            const connection = document.createElement('div');
+            connection.className = `connection ${type}`;
+            connection.style.left = fromX + 'px';
+            connection.style.top = fromY + 'px';
+            connection.style.width = length + 'px';
+            connection.style.transform = `rotate(${angle}deg)`;
+            
+            document.querySelector('.container').appendChild(connection);
+        }
+
+        // Animation d'entrée
+        setTimeout(() => {
+            document.querySelectorAll('.node').forEach((node, index) => {
+                setTimeout(() => {
+                    node.style.opacity = '0';
+                    node.style.transform = 'scale(0.5)';
+                    node.style.transition = 'all 0.5s ease';
+                    setTimeout(() => {
+                        node.style.opacity = '1';
+                        node.style.transform = 'scale(1)';
+                    }, 50);
+                }, index * 100);
+            });
+        }, 500);
+    </script>
+</body>
+</html>

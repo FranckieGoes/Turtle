@@ -249,13 +249,6 @@
                         Terminer et Sauvegarder
                     </button>
                 </div>
-                <!-- BOUTON DEBUG TEMPORAIRE - à ajouter avant </body> -->
-                <div style="position: fixed; top: 10px; right: 10px; z-index: 9999;">
-                    <button id="debug-btn" 
-                            style="background: yellow; color: black; padding: 10px; border: 2px solid red; font-weight: bold; cursor: pointer;">
-                        🐛 DEBUG
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -295,174 +288,10 @@
         // Variable globale pour le timer d'affichage temps réel
         let realTimeUpdateInterval = null;
 
-        // ============================================================================
-        // CORRECTION CRITIQUE: Variables globales pour le tracking précis
-        // ============================================================================
-        let serverSideVectors = []; // Vecteurs côté serveur (vérité terrain)
-        let lastServerUpdate = 0;   // Timestamp dernière mise à jour serveur
-
         // Constantes
         const MAX_SPEED = 10.0, MIN_SPEED = 0.5, SPEED_STEP = 0.5;
         const MAX_ANGLE = 360.0, MIN_ANGLE = 5.0, ANGLE_STEP = 5.0;
         const MAX_DIAMETER = 300.0, MIN_DIAMETER = 0.0, DIAMETER_STEP = 10.0;
-
-        /** NOUVELLE FONCTION - À ajouter dans robot_controller.html
-        function debugSystem() {
-            /**
-             * Diagnostic complet du système d'enregistrement
-             * Cette fonction va analyser chaque composant pour identifier le problème
-             
-            
-            console.log("=== DIAGNOSTIC SYSTÈME COMPLET ===");
-            
-            // 1. État des variables globales
-            console.log("1. VARIABLES GLOBALES:");
-            console.log(`- isRecording: ${isRecording}`);
-            console.log(`- isCurrentlyMoving: ${isCurrentlyMoving}`);
-            console.log(`- currentMovementType: ${currentMovementType}`);
-            console.log(`- currentSpeed: ${currentSpeed}`);
-            console.log(`- currentAngle: ${currentAngle}`);
-            console.log(`- recordingVectors.length: ${recordingVectors.length}`);
-            
-            // 2. Analyse des vecteurs côté client
-            console.log("\n2. ANALYSE VECTEURS CLIENT:");
-            let clientX = 0, clientY = 0, clientAngle = -90;
-            
-            recordingVectors.forEach((vector, i) => {
-                console.log(`Vecteur ${i}:`, JSON.stringify(vector));
-                
-                if (vector.relative_angle) {
-                    clientAngle += vector.relative_angle;
-                    console.log(`  Après rotation: angle = ${clientAngle}°`);
-                }
-                
-                if (vector.distance > 0) {
-                    const angleRad = (clientAngle * Math.PI) / 180;
-                    const oldX = clientX, oldY = clientY;
-                    clientX += vector.distance * Math.cos(angleRad);
-                    clientY += vector.distance * Math.sin(angleRad);
-                    console.log(`  Mouvement: (${oldX.toFixed(1)}, ${oldY.toFixed(1)}) → (${clientX.toFixed(1)}, ${clientY.toFixed(1)})`);
-                }
-            });
-            
-            const clientDistance = Math.sqrt(clientX*clientX + clientY*clientY);
-            console.log(`Position finale client: (${clientX.toFixed(1)}, ${clientY.toFixed(1)}), distance: ${(clientDistance/100).toFixed(2)}m`);
-            
-            // 3. Vérification affichage
-            console.log("\n3. AFFICHAGE ACTUEL:");
-            console.log(`- Distance totale: ${document.getElementById('total-distance').textContent}`);
-            console.log(`- Dernier segment: ${document.getElementById('last-segment').textContent}`);
-            console.log(`- Segment actuel: ${document.getElementById('current-segment').textContent}`);
-            console.log(`- Position: ${document.getElementById('position-display').textContent}`);
-            
-            // 4. État de la fermeture
-            const closureIndicator = document.getElementById('closure-indicator');
-            if (closureIndicator && closureIndicator.style.display !== 'none') {
-                console.log(`- Zone fermable: OUI, distance: ${document.getElementById('closure-distance').textContent}`);
-            } else {
-                console.log(`- Zone fermable: NON`);
-                    position: document.getElementById('position-display').textContent
-                }
-            }
-            
-            console.log("================================");
-            
-            return {
-                client: { x: clientX, y: clientY, angle: clientAngle, distance: clientDistance },
-                vectors: recordingVectors,
-                display: {
-                    total: document.getElementById('total-distance').textContent,
-            };
-        }*/
-
-        // Ajouter cette fonction si elle n'existe pas déjà
-        function debugSystem() {
-            console.log("=== DIAGNOSTIC SYSTÈME COMPLET ===");
-            
-            // 1. État des variables globales
-            console.log("1. VARIABLES GLOBALES:");
-            console.log(`- isRecording: ${typeof isRecording !== 'undefined' ? isRecording : 'undefined'}`);
-            console.log(`- isCurrentlyMoving: ${typeof isCurrentlyMoving !== 'undefined' ? isCurrentlyMoving : 'undefined'}`);
-            console.log(`- currentMovementType: ${typeof currentMovementType !== 'undefined' ? currentMovementType : 'undefined'}`);
-            console.log(`- currentSpeed: ${typeof currentSpeed !== 'undefined' ? currentSpeed : 'undefined'}`);
-            console.log(`- currentAngle: ${typeof currentAngle !== 'undefined' ? currentAngle : 'undefined'}`);
-            console.log(`- recordingVectors.length: ${typeof recordingVectors !== 'undefined' ? recordingVectors.length : 'undefined'}`);
-            
-            // 2. Analyse des vecteurs côté client
-            console.log("\n2. ANALYSE VECTEURS CLIENT:");
-            
-            if (typeof recordingVectors !== 'undefined' && recordingVectors.length > 0) {
-                let clientX = 0, clientY = 0, clientAngle = -90;
-                
-                recordingVectors.forEach((vector, i) => {
-                    console.log(`Vecteur ${i}:`, JSON.stringify(vector));
-                    
-                    if (vector.relative_angle) {
-                        clientAngle += vector.relative_angle;
-                        console.log(`  Après rotation: angle = ${clientAngle}°`);
-                    }
-                    
-                    if (vector.distance > 0) {
-                        const angleRad = (clientAngle * Math.PI) / 180;
-                        const oldX = clientX, oldY = clientY;
-                        clientX += vector.distance * Math.cos(angleRad);
-                        clientY += vector.distance * Math.sin(angleRad);
-                        console.log(`  Mouvement: (${oldX.toFixed(1)}, ${oldY.toFixed(1)}) → (${clientX.toFixed(1)}, ${clientY.toFixed(1)})`);
-                    }
-                });
-                
-                const clientDistance = Math.sqrt(clientX*clientX + clientY*clientY);
-                console.log(`Position finale client: (${clientX.toFixed(1)}, ${clientY.toFixed(1)}), distance: ${(clientDistance/100).toFixed(2)}m`);
-            } else {
-                console.log("Aucun vecteur enregistré");
-            }
-            
-            // 3. Vérification affichage
-            console.log("\n3. AFFICHAGE ACTUEL:");
-            const totalDistance = document.getElementById('total-distance');
-            const lastSegment = document.getElementById('last-segment');
-            const currentSegment = document.getElementById('current-segment');
-            const positionDisplay = document.getElementById('position-display');
-            
-            console.log(`- Distance totale: ${totalDistance ? totalDistance.textContent : 'élément non trouvé'}`);
-            console.log(`- Dernier segment: ${lastSegment ? lastSegment.textContent : 'élément non trouvé'}`);
-            console.log(`- Segment actuel: ${currentSegment ? currentSegment.textContent : 'élément non trouvé'}`);
-            console.log(`- Position: ${positionDisplay ? positionDisplay.textContent : 'élément non trouvé'}`);
-            
-            // 4. État de la fermeture
-            const closureIndicator = document.getElementById('closure-indicator');
-            const closureDistance = document.getElementById('closure-distance');
-            
-            if (closureIndicator && closureIndicator.style.display !== 'none') {
-                console.log(`- Zone fermable: OUI, distance: ${closureDistance ? closureDistance.textContent : 'N/A'}`);
-            } else {
-                console.log(`- Zone fermable: NON`);
-            }
-            
-            console.log("================================");
-            
-            return "Debug terminé - consultez la console pour les détails";
-        }
-
-        // Event listener pour le bouton debug
-        document.getElementById('debug-btn').addEventListener('click', function() {
-            debugSystem();
-            alert('Debug lancé ! Consultez la console (F12)');
-        });
-
-        // Ajouter un bouton temporaire pour lancer le debug
-        function addDebugButton() {
-            const debugBtn = document.createElement('button');
-            debugBtn.textContent = 'DEBUG SYSTÈME';
-            debugBtn.className = 'bg-yellow-500 text-black font-bold py-2 px-4 rounded';
-            debugBtn.onclick = debugSystem;
-            document.body.appendChild(debugBtn);
-        }
-
-        // Lancer le debug automatiquement
-        document.addEventListener('DOMContentLoaded', () => {
-            addDebugButton();
-        });
 
         // Fonctions utilitaires
         function calculateDistance(p1, p2) {
@@ -518,7 +347,7 @@
             }
         }
 
-        // CORRECTION COMPLÈTE de drawLivePath dans robot_controller.html
+        // FONCTION CORRIGÉE - Affichage temps réel avec segment actuel
         function drawLivePath(vectors) {
             const canvas = document.getElementById('live-canvas');
             const ctx = canvas.getContext('2d');
@@ -527,87 +356,50 @@
             canvas.height = canvas.clientHeight;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // CORRECTION 1: Utiliser la MÊME logique que le serveur
+            // Calculer tous les points du parcours enregistré
             const points = [{ x: 0, y: 0 }];
             let x = 0, y = 0, angle = -90;
             let totalDistance = 0;
             
-            console.log(`drawLivePath: Traitement de ${vectors.length} vecteurs`);
-            
-            for (let i = 0; i < vectors.length; i++) {
-                const vector = vectors[i];
-                console.log(`Vecteur ${i}:`, vector);
-                
-                // CORRECTION 2: Traiter rotation ET mouvement dans le même vecteur (comme serveur)
-                const relative_angle = vector.relative_angle || 0;
-                const distance = vector.distance || 0;
-                
-                // Si c'est une rotation pure
-                if (distance === 0 && Math.abs(relative_angle) > 0.1) {
-                    angle += relative_angle;
-                    // Normaliser l'angle
-                    while (angle > 180) angle -= 360;
-                    while (angle <= -180) angle += 360;
-                    console.log(`  Rotation pure: ${relative_angle}° → angle total: ${angle}°`);
-                    // PAS de nouveau point pour les rotations pures
-                    continue;
+            for (const vector of vectors) {
+                if (vector.relative_angle) {
+                    angle += vector.relative_angle;
                 }
-                
-                // Si c'est un mouvement (avec ou sans rotation)
-                if (distance > 0.1) {
-                    // Appliquer d'abord la rotation si elle existe
-                    if (Math.abs(relative_angle) > 0.1) {
-                        angle += relative_angle;
-                        while (angle > 180) angle -= 360;
-                        while (angle <= -180) angle += 360;
-                        console.log(`  Rotation avant mouvement: ${relative_angle}° → angle: ${angle}°`);
-                    }
-                    
-                    // Puis appliquer le mouvement
+                if (vector.distance && vector.distance > 0) {
                     const angleRad = (angle * Math.PI) / 180;
-                    const newX = x + distance * Math.cos(angleRad);
-                    const newY = y + distance * Math.sin(angleRad);
-                    
+                    const newX = x + vector.distance * Math.cos(angleRad);
+                    const newY = y + vector.distance * Math.sin(angleRad);
                     points.push({ x: newX, y: newY });
-                    totalDistance += distance;
-                    
-                    console.log(`  Mouvement: ${distance}cm à ${angle}° → (${x.toFixed(1)}, ${y.toFixed(1)}) → (${newX.toFixed(1)}, ${newY.toFixed(1)})`);
-                    
+                    totalDistance += vector.distance;
                     x = newX;
                     y = newY;
                 }
             }
             
-            // CORRECTION 3: Calculer la position finale comme le serveur
-            const currentPosition = { x, y, angle };
-            
-            // CORRECTION 4: Ajouter le segment temps réel SEULEMENT si vraiment en cours
+            // CORRECTION: Ajouter le point de mouvement en cours
             let currentSegmentLength = 0;
-            if (isCurrentlyMoving && 
-                currentMovementStartTime && 
-                currentMovementType === 'forward' && 
-                realTimeUpdateInterval !== null) {
-                
+            if (isCurrentlyMoving && currentMovementStartTime && currentMovementType) {
                 const elapsed = (Date.now() - currentMovementStartTime) / 1000;
                 const speedCmPerSec = (currentSpeed * 100000) / 3600;
                 currentSegmentLength = elapsed * speedCmPerSec;
                 
-                if (currentSegmentLength > 5) { // Plus de 5cm
+                if (currentSegmentLength > 5) { // Afficher seulement si > 5cm
                     const angleRad = (angle * Math.PI) / 180;
-                    const currentX = x + currentSegmentLength * Math.cos(angleRad);
-                    const currentY = y + currentSegmentLength * Math.sin(angleRad);
+                    const direction = currentMovementType === 'forward' ? 1 : -1;
+                    const currentX = x + currentSegmentLength * Math.cos(angleRad) * direction;
+                    const currentY = y + currentSegmentLength * Math.sin(angleRad) * direction;
                     points.push({ x: currentX, y: currentY, isCurrent: true });
-                    
-                    console.log(`Segment temps réel: ${(currentSegmentLength/100).toFixed(1)}m`);
                 }
             }
+            
+            const currentPosition = { x, y, angle };
             
             if (points.length === 0) {
                 updateStats([], currentPosition, currentSegmentLength);
                 return;
             }
             
-            // Calcul de l'échelle et centrage (code existant inchangé)
+            // Calcul de l'échelle et centrage
             const margin = 30;
             if (points.length > 1) {
                 const minX = Math.min(...points.map(p => p.x));
@@ -627,12 +419,12 @@
                 const offsetX = centerX - ((minX + maxX) / 2) * scale;
                 const offsetY = centerY - ((minY + maxY) / 2) * scale;
                 
-                // Dessiner la grille (code existant)
+                // Dessiner la grille
                 ctx.strokeStyle = '#e2e8f0';
                 ctx.lineWidth = 1;
                 ctx.setLineDash([5, 5]);
                 
-                const gridSpacing = 100;
+                const gridSpacing = 100; // 1 mètre
                 for (let i = -20; i <= 20; i++) {
                     const gridX = centerX + i * gridSpacing * scale / 100;
                     const gridY = centerY + i * gridSpacing * scale / 100;
@@ -653,7 +445,7 @@
                 }
                 ctx.setLineDash([]);
                 
-                // Dessiner le parcours enregistré
+                // Dessiner le parcours enregistré (bleu)
                 ctx.strokeStyle = '#3b82f6';
                 ctx.lineWidth = 3;
                 ctx.lineCap = 'round';
@@ -702,12 +494,13 @@
                 ctx.lineWidth = 3;
                 ctx.stroke();
                 
+                // Texte "START"
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 8px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('START', startX, startY + 2);
                 
-                // Point actuel
+                // Point actuel (rouge/jaune selon état)
                 if (points.length > 1) {
                     const endPoint = points[points.length - 1];
                     const endX = offsetX + endPoint.x * scale;
@@ -735,66 +528,24 @@
                     ctx.stroke();
                 }
                 
-                // CORRECTION 5: Vérifier fermeture zone avec MÊME calcul que serveur
+                // Vérifier fermeture zone
                 if (points.length > 3) {
-                    // Recalculer la position finale exactement comme le serveur
-                    let finalX = 0, finalY = 0, finalAngle = -90;
+                    const currentPos = points[points.length - 1];
+                    const startPos = points[0];
+                    const distanceToStart = calculateDistance(currentPos, startPos);
                     
-                    for (const vector of vectors) {
-                        const relative_angle = vector.relative_angle || 0;
-                        const distance = vector.distance || 0;
-                        
-                        // Rotation pure
-                        if (distance === 0 && Math.abs(relative_angle) > 0.1) {
-                            finalAngle += relative_angle;
-                            while (finalAngle > 180) finalAngle -= 360;
-                            while (finalAngle <= -180) finalAngle += 360;
-                            continue;
-                        }
-                        
-                        // Mouvement
-                        if (distance > 0.1) {
-                            if (Math.abs(relative_angle) > 0.1) {
-                                finalAngle += relative_angle;
-                                while (finalAngle > 180) finalAngle -= 360;
-                                while (finalAngle <= -180) finalAngle += 360;
-                            }
-                            
-                            const angleRad = (finalAngle * Math.PI) / 180;
-                            finalX += distance * Math.cos(angleRad);
-                            finalY += distance * Math.sin(angleRad);
-                        }
-                    }
-                    
-                    // Ajouter le segment temps réel si en cours
-                    if (isCurrentlyMoving && currentMovementStartTime && currentMovementType === 'forward') {
-                        const elapsed = (Date.now() - currentMovementStartTime) / 1000;
-                        const currentDistance = (currentSpeed * 100000 / 3600) * elapsed;
-                        if (currentDistance > 5) {
-                            const angleRad = (finalAngle * Math.PI) / 180;
-                            finalX += currentDistance * Math.cos(angleRad);
-                            finalY += currentDistance * Math.sin(angleRad);
-                        }
-                    }
-                    
-                    const realDistanceToStart = Math.sqrt(finalX*finalX + finalY*finalY);
-                    
-                    console.log(`Distance calculée côté client (corrigée): ${(realDistanceToStart/100).toFixed(2)}m`);
-                    
-                    if (realDistanceToStart < 150) {
-                        // Afficher l'indicateur de fermeture
-                        document.getElementById('closure-indicator').style.display = 'block';
-                        document.getElementById('closure-distance').textContent = (realDistanceToStart / 100).toFixed(1) + ' m';
-                        
-                        // Dessiner la ligne de fermeture
+                    if (distanceToStart < 150) {
                         ctx.strokeStyle = '#10b981';
                         ctx.lineWidth = 2;
                         ctx.setLineDash([15, 10]);
                         ctx.beginPath();
-                        ctx.moveTo(offsetX + finalX * scale, offsetY + finalY * scale);
-                        ctx.lineTo(offsetX + 0 * scale, offsetY + 0 * scale);
+                        ctx.moveTo(offsetX + currentPos.x * scale, offsetY + currentPos.y * scale);
+                        ctx.lineTo(offsetX + startPos.x * scale, offsetY + startPos.y * scale);
                         ctx.stroke();
                         ctx.setLineDash([]);
+                        
+                        document.getElementById('closure-indicator').style.display = 'block';
+                        document.getElementById('closure-distance').textContent = (distanceToStart / 100).toFixed(1) + ' m';
                     } else {
                         document.getElementById('closure-indicator').style.display = 'none';
                     }
@@ -834,26 +585,37 @@
             document.getElementById('points-counter').textContent = points.filter(p => !p.isCurrent).length + ' points';
         }
 
-        // ============================================================================
-        // CORRECTION 3: Amélioration du polling avec cache
-        // ============================================================================
+        function  (points, currentPos, currentSegment = 0) {
+            let totalDistance = 0;
+            let lastSegmentDistance = 0;
+            
+            for (let i = 1; i < points.length; i++) {
+                if (!points[i].isCurrent) {
+                    const segmentDist = calculateDistance(points[i-1], points[i]);
+                    totalDistance += segmentDist;
+                    lastSegmentDistance = segmentDist;
+                }
+            }
+            
+            document.getElementById('total-distance').textContent = (totalDistance / 100).toFixed(1) + ' m';
+            document.getElementById('last-segment').textContent = (lastSegmentDistance / 100).toFixed(1) + ' m';
+            document.getElementById('current-segment').textContent = (currentSegment / 100).toFixed(1) + ' m';
+            document.getElementById('current-angle').textContent = currentPos.angle.toFixed(0) + '°';
+            document.getElementById('current-x').textContent = (currentPos.x / 100).toFixed(1) + 'm';
+            document.getElementById('current-y').textContent = (currentPos.y / 100).toFixed(1) + 'm';
+            document.getElementById('points-counter').textContent = points.filter(p => !p.isCurrent).length + ' points';
+        }
+
         async function pollLivePath() {
             try {
                 const response = await fetch('/api/live_path');
                 const vectors = await response.json();
                 
                 const currentUpdate = JSON.stringify(vectors);
-                const hasChanged = currentUpdate !== lastRecordingUpdate;
-                
-                if (hasChanged || isCurrentlyMoving) {
+                if (currentUpdate !== lastRecordingUpdate || isCurrentlyMoving) {
                     recordingVectors = vectors;
-                    serverSideVectors = [...vectors]; // Cache des données serveur
-                    lastServerUpdate = Date.now();
-                    
                     drawLivePath(vectors);
                     lastRecordingUpdate = currentUpdate;
-                    
-                    console.log(`Mise à jour: ${vectors.length} vecteurs (${hasChanged ? 'changé' : 'temps réel'})`);
                 }
             } catch (error) {
                 console.error("Erreur de polling:", error);
@@ -876,12 +638,12 @@
                 }
             }
             
-            // Ajouter le segment en cours si le robot bouge
+            // NOUVEAU: Ajouter le segment en cours si le robot bouge
             if (isCurrentlyMoving && currentMovementStartTime) {
                 const elapsed = (Date.now() - currentMovementStartTime) / 1000;
                 const currentDistance = (currentSpeed * 100000 / 3600) * elapsed;
                 
-                if (currentDistance > 5) {
+                if (currentDistance > 5) { // Seulement si > 5cm
                     const angleRad = (angle * Math.PI) / 180;
                     const direction = currentMovementType === 'forward' ? 1 : -1;
                     x += currentDistance * Math.cos(angleRad) * direction;
@@ -892,334 +654,108 @@
             return {x, y, angle};
         }
 
-
         // ============================================================================
-        // CORRECTION 1: Fonction de fermeture automatique COMPLÈTEMENT REFAITE
+        // CORRECTION 2: Fermeture automatique zone corrigée
         // ============================================================================
-function closeZoneAutomatically() {
-    /**
-     * CORRECTION MAJEURE: Synchronisation complète avec le serveur avant fermeture
-     * Utilise la position réelle calculée côté serveur, pas côté client
-     */
-    
-    if (recordingVectors.length < 3) {
-        alert("Il faut au moins 3 points pour fermer une zone !");
-        return;
-    }
-    
-    console.log("=== DÉBUT FERMETURE AUTOMATIQUE ===");
-    
-    const executeClosureAfterUpdate = async () => {
-        try {
-            // 1. Arrêter TOUT mouvement et tracking
-            if (isCurrentlyMoving) {
-                console.log("Arrêt mouvement en cours...");
-                await sendCommand('stop');
-                isCurrentlyMoving = false;
-                currentMovementStartTime = null;
-                stopRealTimeSegmentDisplay();
-                await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-            
-            // 2. TRIPLE synchronisation avec le serveur pour être sûr
-            console.log("Synchronisation forcée avec le serveur...");
-            for (let i = 0; i < 3; i++) {
-                await pollLivePath();
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-            
-            // 3. DEMANDER LA POSITION AU SERVEUR (pas la calculer côté client)
-            console.log("Demande de position réelle au serveur...");
-            const positionResponse = await fetch('/api/get_current_position', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (!positionResponse.ok) {
-                throw new Error('Impossible de récupérer la position du serveur');
-            }
-            
-            const positionData = await positionResponse.json();
-            const serverPosition = positionData.position;
-            const distanceToStart = positionData.distance_to_start;
-            
-            console.log(`Position serveur: x=${serverPosition.x}cm, y=${serverPosition.y}cm`);
-            console.log(`Distance serveur au départ: ${(distanceToStart/100).toFixed(2)}m`);
-            
-            // 4. Vérifier la cohérence avec l'affichage visuel
-            const visualDistance = parseFloat(document.getElementById('closure-distance').textContent || '999');
-            const serverDistanceM = distanceToStart / 100;
-            
-            console.log(`Comparaison: Visuel=${visualDistance}m, Serveur=${serverDistanceM.toFixed(1)}m`);
-            
-            if (Math.abs(visualDistance - serverDistanceM) > 2.0) {
-                const warningMsg = `ATTENTION: Incohérence détectée!\n\n` +
-                    `Affichage visuel: ${visualDistance}m\n` +
-                    `Calcul serveur: ${serverDistanceM.toFixed(1)}m\n` +
-                    `Écart: ${Math.abs(visualDistance - serverDistanceM).toFixed(1)}m\n\n` +
-                    `Utiliser la valeur serveur (plus fiable) ?`;
-                
-                if (!confirm(warningMsg)) {
-                    console.log("Fermeture annulée par l'utilisateur");
-                    return;
-                }
-            }
-            
-            // 5. Validation avec seuil réaliste
-            if (distanceToStart > 300) { // 3m maximum
-                const confirmMsg = `Distance importante au départ: ${serverDistanceM.toFixed(1)}m\n\n` +
-                    `Cette distance semble anormalement grande.\n` +
-                    `Voulez-vous quand même créer un segment de fermeture ?`;
-                if (!confirm(confirmMsg)) {
-                    console.log("Fermeture annulée - distance trop importante");
-                    return;
-                }
-            }
-            
-            // 6. Calculer les mouvements de fermeture basés sur la position serveur
-            const movements = positionData.closure_movements;
-            
-            console.log("Mouvements de fermeture calculés par le serveur:", movements);
-            
-            // 7. Exécuter les mouvements
-            let executedSteps = [];
-            
-            // Rotation si nécessaire
-            if (movements.rotation && Math.abs(movements.rotation.angle) > 5) {
-                const turnDirection = movements.rotation.angle > 0 ? 'turn_right' : 'turn_left';
-                const rotations = movements.rotation.steps;
-                
-                console.log(`Exécution: ${rotations} rotation(s) de ${currentAngle}°`);
-                
-                for (let i = 0; i < rotations; i++) {
-                    await sendCommand(turnDirection);
-                    await new Promise(resolve => setTimeout(resolve, 2500));
-                    await sendCommand('stop');
-                    await new Promise(resolve => setTimeout(resolve, 300));
-                }
-                
-                executedSteps.push(`Rotation: ${movements.rotation.angle.toFixed(1)}°`);
-            }
-            
-            // Mouvement de fermeture si nécessaire
-            if (movements.forward && movements.forward.distance > 10) {
-                console.log(`Exécution mouvement: ${(movements.forward.distance/100).toFixed(2)}m`);
-                
-                await sendCommand('forward');
-                await new Promise(resolve => setTimeout(resolve, movements.forward.duration));
-                await sendCommand('stop');
-                
-                executedSteps.push(`Déplacement: ${(movements.forward.distance/100).toFixed(2)}m`);
-            }
-            
-            // 8. Finalisation
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await pollLivePath();
-            
-            const finalMessage = `Zone fermée automatiquement !\n\n${executedSteps.join('\n')}\n\n` +
-                `Distance de fermeture: ${serverDistanceM.toFixed(2)}m`;
-            alert(finalMessage);
-            
-            console.log("=== FERMETURE AUTOMATIQUE TERMINÉE ===");
-            
-        } catch (error) {
-            console.error('Erreur fermeture automatique:', error);
-            alert(`Erreur lors de la fermeture automatique: ${error.message}`);
-        }
-    };
-    
-    executeClosureAfterUpdate();
-}
-
-        // ============================================================================
-        // CORRECTION 2: Nouvelle fonction de calcul de position précise
-        // ============================================================================
-        function calculateRealPositionFromVectors(vectors) {
-            //Calcule la position réelle du robot basée sur les vecteurs validés côté serveur
-            //Cette fonction est plus précise car elle ne dépend pas des variables client
-            
-            let x = 0, y = 0, angle = -90;
-            
-            console.log(`Calcul position avec ${vectors.length} vecteurs`);
-            
-            for (let i = 0; i < vectors.length; i++) {
-                const vector = vectors[i];
-                
-                // Appliquer la rotation
-                if (vector.relative_angle && Math.abs(vector.relative_angle) > 0.1) {
-                    angle += vector.relative_angle;
-                    console.log(`Vecteur ${i}: rotation ${vector.relative_angle}° -> angle total ${angle.toFixed(1)}°`);
-                }
-                
-                // Appliquer le déplacement
-                if (vector.distance && vector.distance > 0.1) {
-                    const angleRad = (angle * Math.PI) / 180;
-                    const deltaX = vector.distance * Math.cos(angleRad);
-                    const deltaY = vector.distance * Math.sin(angleRad);
-                    
-                    x += deltaX;
-                    y += deltaY;
-                    
-                    console.log(`Vecteur ${i}: déplacement ${vector.distance}cm -> position (${x.toFixed(1)}, ${y.toFixed(1)})`);
-                }
-            }
-            
-            console.log(`Position finale calculée: x=${x.toFixed(1)}cm, y=${y.toFixed(1)}cm, angle=${angle.toFixed(1)}°`);
-            return { x, y, angle };
-        }
-
-        // ============================================================================
-        // NOUVELLE FONCTION : Calcul de position réelle du robot
-        // ============================================================================
-        function getCurrentRealRobotPosition() {
-            let x = 0, y = 0, angle = -90;
-            
-            // Traiter TOUS les vecteurs enregistrés (y compris ceux en cours)
-            const allVectors = [...recordingVectors];
-            
-            // Ajouter le segment en cours si le robot bouge
-            if (isCurrentlyMoving && currentMovementStartTime) {
-                const elapsed = (Date.now() - currentMovementStartTime) / 1000;
-                const currentDistance = (currentSpeed * 100000 / 3600) * elapsed;
-                
-                if (currentDistance > 5) { // Plus de 5cm
-                    allVectors.push({
-                        distance: currentDistance,
-                        relative_angle: 0
-                    });
-                }
-            }
-            
-            // Calculer la position finale
-            for (const vector of allVectors) {
-                if (vector.relative_angle) {
-                    angle += vector.relative_angle;
-                }
-                if (vector.distance && vector.distance > 0) {
-                    const angleRad = (angle * Math.PI) / 180;
-                    const direction = currentMovementType === 'backward' ? -1 : 1;
-                    x += vector.distance * Math.cos(angleRad) * direction;
-                    y += vector.distance * Math.sin(angleRad) * direction;
-                }
-            }
-            
-            return { x, y, angle };
-        }
-
-        /**
-         * CORRECTION: Démarrage sécurisé de l'affichage temps réel
-         */
-        function startRealTimeSegmentDisplay() {
-            // Arrêter tout interval existant d'abord
-            stopRealTimeSegmentDisplay();
-            
-            // CORRECTION: Vérifier que le mouvement est vraiment en cours
-            if (!isCurrentlyMoving || !currentMovementStartTime) {
-                console.log("Pas de mouvement en cours - affichage temps réel non démarré");
+        function closeZoneAutomatically() {
+            if (recordingVectors.length < 3) {
+                alert("Il faut au moins 3 points pour fermer une zone !");
                 return;
             }
             
-            console.log("Démarrage affichage temps réel");
-            realTimeUpdateInterval = setInterval(() => {
-                // CORRECTION: Double vérification à chaque update
-                if (!isCurrentlyMoving || !currentMovementStartTime) {
-                    console.log("Mouvement arrêté - stop de l'affichage temps réel");
-                    stopRealTimeSegmentDisplay();
-                    return;
-                }
-                
-                const elapsed = (Date.now() - currentMovementStartTime) / 1000;
-                const currentDistance = (currentSpeed * 100000 / 3600) * elapsed;
-                
-                // Mettre à jour l'affichage immédiatement
-                document.getElementById('current-segment').textContent = (currentDistance / 100).toFixed(1) + ' m';
-                
-                // Redessiner le parcours avec la position temps réel
-                if (recordingVectors.length >= 0) {
-                    drawLivePath(recordingVectors);
-                }
-            }, 100); // Mise à jour 10x par seconde
-        }
-
-        /**
-         * CORRECTION: Arrête complètement l'affichage temps réel et remet à zéro
-         */
-        function stopRealTimeSegmentDisplay() {
-            if (realTimeUpdateInterval) {
-                clearInterval(realTimeUpdateInterval);
-                realTimeUpdateInterval = null;
-                console.log("Affichage temps réel arrêté");
+            // CORRECTION: Utiliser la fonction améliorée pour calculer la position
+            const currentPos = getCurrentPositionFromVectors();
+            const startPos = { x: 0, y: 0 };
+            const distanceToStart = calculateDistance(currentPos, startPos);
+            
+            console.log(`Position actuelle: x=${currentPos.x.toFixed(1)}, y=${currentPos.y.toFixed(1)}, angle=${currentPos.angle.toFixed(1)}`);
+            console.log(`Distance au départ: ${(distanceToStart / 100).toFixed(1)}m`);
+            
+            if (distanceToStart > 200) {
+                const confirm = window.confirm(
+                    `La position actuelle est à ${(distanceToStart / 100).toFixed(1)}m du point de départ.\n` +
+                    "Voulez-vous vraiment fermer automatiquement la zone ?"
+                );
+                if (!confirm) return;
             }
             
-            // CORRECTION: Remettre à zéro l'affichage du segment actuel
-            //document.getElementById('current-segment').textContent = '0.0 m';
-        }
-
-        function updateUI() {
-            speedDisplay.textContent = currentSpeed.toFixed(1);
-            angleDisplay.textContent = currentAngle.toFixed(0);
-            diameterDisplay.textContent = currentDiameter.toFixed(0);
+            // Calculer l'angle pour revenir au point de départ
+            const dx = startPos.x - currentPos.x;
+            const dy = startPos.y - currentPos.y;
+            const targetAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const currentAngle = currentPos.angle;
             
-            const speedPercent = ((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100;
-            const anglePercent = ((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100;
-            const diameterPercent = (currentDiameter / MAX_DIAMETER) * 100;
+            let relativeAngle = targetAngle - currentAngle;
+            while (relativeAngle <= -180) relativeAngle += 360;
+            while (relativeAngle > 180) relativeAngle -= 360;
             
-            speedFill.style.width = speedPercent + '%';
-            angleBar.style.width = anglePercent + '%';
-            diameterBar.style.width = diameterPercent + '%';
-        }
-
-        function updateModalParameters() {
-            document.getElementById('modal-speed-display').textContent = currentSpeed.toFixed(1) + ' km/h';
-            document.getElementById('modal-angle-display').textContent = currentAngle.toFixed(0) + '°';
-            document.getElementById('modal-diameter-display').textContent = currentDiameter.toFixed(0) + ' cm';
+            console.log(`Angle de fermeture nécessaire: ${relativeAngle.toFixed(1)}°`);
             
-            const speedPercent = ((currentSpeed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED)) * 100;
-            const anglePercent = ((currentAngle - MIN_ANGLE) / (MAX_ANGLE - MIN_ANGLE)) * 100;
-            const diameterPercent = (currentDiameter / MAX_DIAMETER) * 100;
-            
-            document.getElementById('modal-speed-fill').style.width = speedPercent + '%';
-            document.getElementById('modal-angle-fill').style.width = anglePercent + '%';
-            document.getElementById('modal-diameter-fill').style.width = diameterPercent + '%';
-        }
-        
-        // CORRECTION CRITIQUE: Fonction sendCommand améliorée
-        async function sendCommand(command, params = {}) {
-            try {
-                console.log(`Commande envoyée: ${command}`);
-                
-                // CORRECTION 1: Arrêter immédiatement le tracking temps réel avant d'envoyer STOP
-                if (command === 'stop') {
-                    console.log("STOP détecté - Arrêt immédiat du tracking temps réel");
-                    
-                    // Arrêter immédiatement les variables de tracking
-                    isCurrentlyMoving = false;
-                    currentMovementType = null;
-                    currentMovementStartTime = null;
-                    
-                    // Arrêter l'affichage temps réel AVANT d'envoyer la commande
-                    stopRealTimeSegmentDisplay();
-                    
-                    // Mettre à jour l'affichage immédiatement
-                    //document.getElementById('current-segment').textContent = '0.0 m';
-                }
-                
-                // CORRECTION 2: Gestion du début de mouvement avec vérification
-                else if (command === 'forward' || command === 'backward') {
-                    // S'assurer qu'aucun mouvement précédent n'est en cours
+            // CORRECTION: Exécuter les commandes réelles au robot
+            const executeClosing = async () => {
+                try {
+                    // Arrêter d'abord tout mouvement en cours
                     if (isCurrentlyMoving) {
-                        console.log("Arrêt du mouvement précédent avant nouveau mouvement");
-                        isCurrentlyMoving = false;
-                        stopRealTimeSegmentDisplay();
+                        await sendCommand('stop');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
                     }
                     
-                    // Démarrer le nouveau mouvement
+                    // Rotation si nécessaire
+                    if (Math.abs(relativeAngle) > 5) {
+                        console.log(`Rotation de ${relativeAngle.toFixed(1)}° nécessaire`);
+                        
+                        // Calculer le nombre de rotations nécessaires
+                        const rotationSteps = Math.ceil(Math.abs(relativeAngle) / currentAngle);
+                        const turnCommand = relativeAngle > 0 ? 'turn_right' : 'turn_left';
+                        
+                        for (let i = 0; i < rotationSteps; i++) {
+                            await sendCommand(turnCommand);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            await sendCommand('stop');
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    }
+                    
+                    // Mouvement vers le départ
+                    if (distanceToStart > 10) {
+                        console.log(`Avancement de ${(distanceToStart / 100).toFixed(1)}m vers le départ`);
+                        await sendCommand('forward');
+                        
+                        // Calculer le temps nécessaire pour parcourir la distance
+                        const timeNeeded = (distanceToStart / ((currentSpeed * 100000) / 3600)) * 1000;
+                        await new Promise(resolve => setTimeout(resolve, timeNeeded));
+                        
+                        await sendCommand('stop');
+                    }
+                    
+                    // Forcer la mise à jour du parcours
+                    setTimeout(() => {
+                        pollLivePath();
+                    }, 1000);
+                    
+                    alert(`Zone fermée automatiquement ! Distance de fermeture: ${(distanceToStart / 100).toFixed(1)}m`);
+                } catch (error) {
+                    console.error('Erreur fermeture automatique:', error);
+                    alert("Erreur lors de la fermeture automatique de la zone");
+                }
+            };
+            
+            executeClosing();
+        }
+
+        // ============================================================================
+        // CORRECTION 5: Gestion améliorée des mouvements pour l'enregistrement
+        // ============================================================================
+
+        // Correction de sendCommand pour mieux gérer le tracking des mouvements
+        async function sendCommand(command, params = {}) {
+            try {
+                // CORRECTION: Gérer le début de mouvement avec l'affichage temps réel
+                if (command === 'forward' || command === 'backward') {
                     isCurrentlyMoving = true;
                     currentMovementType = command;
                     currentMovementStartTime = Date.now();
                     currentMovementStartPos = getCurrentPositionFromVectors();
-                    
-                    console.log(`Début mouvement ${command} à ${new Date().toLocaleTimeString()}`);
                     
                     // Démarrer l'affichage temps réel si en enregistrement
                     if (pollingInterval) {
@@ -1227,20 +763,24 @@ function closeZoneAutomatically() {
                     }
                 }
                 
-                // CORRECTION 3: Gestion des rotations (pas de segment temps réel)
-                else if (command === 'turn_left' || command === 'turn_right') {
-                    // Arrêter tout tracking de mouvement linéaire
+                // CORRECTION: Gérer l'arrêt avec mise à jour immédiate
+                else if (command === 'stop') {
+                    if (isCurrentlyMoving && currentMovementStartTime) {
+                        // Finaliser la position
+                        const elapsed = (Date.now() - currentMovementStartTime) / 1000;
+                        const distance_traveled = (currentSpeed * 100000 / 3600) * elapsed;
+                        
+                        console.log(`Mouvement arrêté: ${(distance_traveled / 100).toFixed(1)}m en ${elapsed.toFixed(1)}s`);
+                    }
+                    
                     isCurrentlyMoving = false;
                     currentMovementType = null;
                     currentMovementStartTime = null;
-                    stopRealTimeSegmentDisplay();
                     
-                    // Mettre à jour l'affichage
-                    document.getElementById('current-segment').textContent = '0.0 m';
-                    console.log(`Rotation ${command} - pas de segment temps réel`);
+                    // Arrêter l'affichage temps réel
+                    stopRealTimeSegmentDisplay();
                 }
                 
-                // Envoyer la commande au serveur
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1252,22 +792,9 @@ function closeZoneAutomatically() {
                     lastStatusMessage = data.message;
                     updateStatusDisplay(data.message, response.ok ? 'success' : 'error');
                 }
-                
-                // CORRECTION 4: Forcer une mise à jour après STOP si en enregistrement
-                if (command === 'stop' && pollingInterval) {
-                    console.log("Programmation mise à jour forcée après STOP");
-                    setTimeout(async () => {
-                        await pollLivePath();
-                        console.log('Mise à jour forcée post-STOP exécutée');
-                    }, 200);
-                }
-                
             } catch (error) {
-                console.error('Erreur sendCommand:', error);
                 lastStatusMessage = 'Erreur réseau';
                 updateStatusDisplay(lastStatusMessage, 'error');
-                
-                // En cas d'erreur, arrêter le tracking
                 isCurrentlyMoving = false;
                 stopRealTimeSegmentDisplay();
             }
@@ -1313,44 +840,23 @@ function closeZoneAutomatically() {
 
         for (const [btnId, cmd] of Object.entries(continuousCommands)) {
             const btn = document.getElementById(btnId);
-            
-            // Démarrer le mouvement sur mousedown
-            btn.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                sendCommand(cmd);
-            });
-            
-            // Arrêter le mouvement sur mouseup OU mouseleave
-            btn.addEventListener('mouseup', () => {
-                sendCommand('stop');
-            });
-            
-            btn.addEventListener('mouseleave', () => {
-                sendCommand('stop');
-            });
+            btn.addEventListener('mousedown', () => sendCommand(cmd));
         }
         
         // ============================================================================
         // CORRECTION 3: STOP déclenche l'enregistrement (principal)
         // ============================================================================
 
-        // CORRECTION: Event listener STOP principal amélioré
+        // Pour le bouton STOP principal
         document.getElementById('stop-btn').addEventListener('click', async () => {
-            console.log('Bouton STOP principal cliqué');
-            
-            // Arrêter immédiatement le tracking côté client
-            isCurrentlyMoving = false;
-            currentMovementStartTime = null;
-            stopRealTimeSegmentDisplay();
-            
-            // Envoyer la commande STOP
             await sendCommand('stop');
+            isCurrentlyMoving = false;
             
-            // Si en mode enregistrement, forcer la mise à jour
+            // Si en mode enregistrement, déclencher la mise à jour
             if (pollingInterval) {
                 setTimeout(async () => {
                     await pollLivePath();
-                    console.log('Mise à jour forcée depuis bouton STOP principal');
+                    console.log('Mise à jour forcée après STOP');
                 }, 300);
             }
         });
@@ -1483,30 +989,27 @@ function closeZoneAutomatically() {
             }
         }
 
-        // CORRECTION: Event listener STOP modal amélioré  
+        // ============================================================================
+        // CORRECTION 3: STOP déclenche l'enregistrement (modalité)
+        // ============================================================================
+        // Pour le bouton STOP du modal - VERSION CORRIGÉE
         document.getElementById('modal-stop-movement-btn').addEventListener('click', async () => {
-            console.log('Bouton STOP modal cliqué');
-            
-            // Arrêter immédiatement le tracking côté client
-            isCurrentlyMoving = false;
-            currentMovementStartTime = null;
-            stopRealTimeSegmentDisplay();
-            
-            // Envoyer la commande STOP
+            console.log('STOP modal déclenché');
             await sendCommand('stop');
+            isCurrentlyMoving = false;
             
             // CORRECTION: Forcer l'enregistrement immédiat du segment
             if (pollingInterval && recordingVectors.length >= 0) {
-                console.log('Forcement de la mise à jour du parcours depuis modal...');
+                console.log('Forcement de la mise à jour du parcours...');
                 
                 // Première mise à jour immédiate
                 await pollLivePath();
                 
-                // Seconde mise à jour après délai pour s'assurer que le serveur a traité
+                // Seconde mise à jour après un délai pour s'assurer que le serveur a traité
                 setTimeout(async () => {
                     await pollLivePath();
-                    console.log('Seconde mise à jour après STOP modal');
-                }, 400);
+                    console.log('Seconde mise à jour après STOP');
+                }, 500);
             }
         });
 
@@ -1532,119 +1035,18 @@ function closeZoneAutomatically() {
             sendCommand('resume');
         });
 
-        // AMÉLIORATION du bouton Point dans robot_controller.html
         document.getElementById('modal-mark-point-btn').addEventListener('click', async () => {
-            /**
-             * Bouton POINT - Utilités :
-             * 1. Forcer l'enregistrement du segment en cours (comme un STOP)
-             * 2. Marquer un point d'intérêt (obstacle, borne, etc.)
-             * 3. Créer un checkpoint dans l'enregistrement
-             * 4. Finaliser proprement un mouvement sans arrêter le robot
-             */
-            
-            console.log('Bouton POINT cliqué - Marquage d\'un point d\'intérêt');
-            
-            try {
-                // 1. Si le robot bouge, finaliser le segment en cours
-                if (isCurrentlyMoving) {
-                    console.log("Finalisation du mouvement en cours...");
-                    await sendCommand('stop');
-                    isCurrentlyMoving = false;
-                    stopRealTimeSegmentDisplay();
-                }
-                
-                // 2. Ajouter un marqueur côté serveur
-                const response = await fetch('/api/mark_point', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        timestamp: Date.now(),
-                        note: "Point marqué par utilisateur" 
-                    })
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    console.log("Point marqué:", result.message);
-                }
-                
-                // 3. Forcer la mise à jour pour enregistrer le segment
-                setTimeout(async () => {
-                    await pollLivePath();
-                    console.log('Mise à jour après marquage de point');
-                }, 300);
-                
-                // 4. Feedback visuel temporaire
-                const button = document.getElementById('modal-mark-point-btn');
-                const originalText = button.innerHTML;
-                button.innerHTML = '<span class="text-green-400">✓ Marqué</span>';
-                
-                setTimeout(() => {
-                    button.innerHTML = originalText;
-                }, 1500);
-                
-            } catch (error) {
-                console.error('Erreur marquage point:', error);
-                alert('Erreur lors du marquage du point');
-            }
+            await sendCommand('stop');
+            isCurrentlyMoving = false;
+            setTimeout(() => {
+                pollLivePath();
+            }, 500);
         });
 
-        // CORRECTION COMPLÈTE du bouton Annuler dans robot_controller.html
-        document.getElementById('undo-last-btn').addEventListener('click', async () => {
-            /**
-             * CORRECTION: Annule réellement le dernier segment côté serveur ET côté client
-             * Cette fonction doit synchroniser l'annulation avec le serveur
-             */
-            
-            if (recordingVectors.length === 0) {
-                alert("Aucun segment à annuler.");
-                return;
-            }
-            
-            // Confirmation utilisateur
-            const lastVector = recordingVectors[recordingVectors.length - 1];
-            const vectorDesc = lastVector.distance > 0 
-                ? `mouvement de ${(lastVector.distance/100).toFixed(1)}m` 
-                : `rotation de ${lastVector.relative_angle}°`;
-            
-            if (!confirm(`Annuler le dernier segment :\n${vectorDesc}\n\nCette action modifiera l'enregistrement côté serveur.`)) {
-                return;
-            }
-            
-            try {
-                // 1. Arrêter tout mouvement en cours
-                if (isCurrentlyMoving) {
-                    await sendCommand('stop');
-                    isCurrentlyMoving = false;
-                    stopRealTimeSegmentDisplay();
-                }
-                
-                // 2. Envoyer la commande d'annulation au serveur
-                console.log("Envoi commande d'annulation au serveur...");
-                const response = await fetch('/api/undo_last_segment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    alert(`Erreur serveur: ${errorData.message || 'Impossible d\'annuler'}`);
-                    return;
-                }
-                
-                const result = await response.json();
-                console.log("Réponse serveur:", result.message);
-                
-                // 3. Forcer la mise à jour depuis le serveur
-                await pollLivePath();
-                
-                // 4. Afficher confirmation
-                alert(`Segment annulé: ${vectorDesc}`);
-                console.log(`Segment annulé avec succès. Vecteurs restants: ${recordingVectors.length - 1}`);
-                
-            } catch (error) {
-                console.error('Erreur lors de l\'annulation:', error);
-                alert('Erreur de communication avec le serveur lors de l\'annulation.');
+        document.getElementById('undo-last-btn').addEventListener('click', () => {
+            if (recordingVectors.length > 0) {
+                recordingVectors.pop();
+                drawLivePath(recordingVectors);
             }
         });
 
@@ -1687,52 +1089,42 @@ function closeZoneAutomatically() {
 
         document.getElementById('modal-stop-record-btn').addEventListener('click', stopAndSaveRecording);
 
-        /**
-         * Fonction de debug pour vérifier la cohérence des calculs de position
-         * Utile pour diagnostiquer les problèmes de fermeture automatique
-         */
-        function debugCurrentPosition() {
-            console.log("=== DEBUG POSITION ACTUELLE ===");
-            console.log(`Vecteurs enregistrés: ${recordingVectors.length}`);
-            
-            let x = 0, y = 0, angle = -90;
-            
-            recordingVectors.forEach((vector, i) => {
-                console.log(`Vecteur ${i}:`, vector);
-                
-                if (vector.relative_angle) {
-                    angle += vector.relative_angle;
-                    console.log(`  Après rotation: angle=${angle}°`);
-                }
-                
-                if (vector.distance > 0) {
-                    const angleRad = (angle * Math.PI) / 180;
-                    const oldX = x, oldY = y;
-                    x += vector.distance * Math.cos(angleRad);
-                    y += vector.distance * Math.sin(angleRad);
-                    console.log(`  Mouvement: (${oldX.toFixed(1)}, ${oldY.toFixed(1)}) → (${x.toFixed(1)}, ${y.toFixed(1)})`);
-                }
-            });
-            
-            const distanceToStart = Math.sqrt(x*x + y*y);
-            console.log(`Position finale: (${x.toFixed(1)}, ${y.toFixed(1)}), distance au départ: ${(distanceToStart/100).toFixed(2)}m`);
-            console.log("================================");
-            
-            return {x, y, angle, distanceToStart};
-        }
-
-        // Ajouter un bouton de debug temporaire dans le modal pour tester
-        document.getElementById('close-zone-btn').addEventListener('click', () => {
-            // Debug avant fermeture
-            debugCurrentPosition();
-            closeZoneAutomatically();
-        });
-
         // Initialisation
         updateUI();
         updateModalParameters();
         setInterval(fetchStatus, 2500);
     });
+    
+
+    // Fonction pour démarrer l'affichage temps réel
+    function startRealTimeSegmentDisplay() {
+        if (realTimeUpdateInterval) return; // Éviter les doublons
+        
+        realTimeUpdateInterval = setInterval(() => {
+            if (isCurrentlyMoving && currentMovementStartTime) {
+                const elapsed = (Date.now() - currentMovementStartTime) / 1000;
+                const currentDistance = (currentSpeed * 100000 / 3600) * elapsed;
+                
+                // Mettre à jour l'affichage du segment en cours
+                document.getElementById('current-segment').textContent = (currentDistance / 100).toFixed(1) + ' m';
+                
+                // Mettre à jour aussi la visualisation
+                if (pollingInterval) {
+                    // Redessiner avec le segment en cours
+                    drawLivePath(recordingVectors);
+                }
+            }
+        }, 200); // Mise à jour toutes les 200ms
+    }
+
+    // Fonction pour arrêter l'affichage temps réel
+    function stopRealTimeSegmentDisplay() {
+        if (realTimeUpdateInterval) {
+            clearInterval(realTimeUpdateInterval);
+            realTimeUpdateInterval = null;
+        }
+    }
+
 
     </script>
 </body>

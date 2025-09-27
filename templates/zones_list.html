@@ -8,40 +8,292 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .zone-card {
+            transition: all 0.2s ease;
+        }
+        .zone-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .zone-selected {
+            background-color: #fef3c7 !important;
+            border-color: #f59e0b !important;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-8">
 
-    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-3xl mx-auto">
-        <h1 class="text-3xl sm:text-4xl font-bold mb-6 text-indigo-700 text-center">Mes Zones de Tonte</h1>
+    <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-bold text-indigo-700">Mes Zones de Tonte</h1>
+            
+            <!-- Boutons de gestion globale -->
+            <div class="flex space-x-2">
+                <button id="select-all-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                    Tout sélectionner
+                </button>
+                <button id="delete-selected-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition" style="display: none;">
+                    Supprimer sélection
+                </button>
+                <button id="delete-all-btn" class="bg-red-700 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-lg transition">
+                    Tout supprimer
+                </button>
+            </div>
+        </div>
         
-        <div id="zones-list" class="space-y-3">
+        <!-- Statistiques -->
+        <div id="stats" class="bg-indigo-50 p-4 rounded-lg mb-6">
+            <p class="text-indigo-800 font-medium">
+                {% if zones %}
+                    {{ zones|length }} zone(s) enregistrée(s) • <span id="selected-count">0</span> sélectionnée(s)
+                {% else %}
+                    Aucune zone enregistrée
+                {% endif %}
+            </p>
+        </div>
+        
+        <div id="zones-list" class="space-y-4">
             {% if zones %}
-                <ul class="divide-y divide-gray-200">
-                    {% for zone in zones %}
-                    <li class="py-4 flex justify-between items-center space-x-2">
-                        <span class="text-lg text-gray-800 font-medium">{{ zone.name }}</span>
-                        <div class="flex flex-wrap space-x-2">
-                            <a href="/view_zone?name={{ zone.name }}" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Visualiser</a>
-                            
+                {% for zone in zones %}
+                <div class="zone-card bg-gray-50 border-2 border-gray-200 rounded-xl p-4" data-zone-id="{{ zone.id }}" data-zone-name="{{ zone.name }}">
+                    <div class="flex justify-between items-center">
+                        <!-- Checkbox de sélection -->
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" class="zone-checkbox w-5 h-5 text-indigo-600 rounded focus:ring-indigo-500" data-zone-id="{{ zone.id }}">
+                            <span class="text-lg text-gray-800 font-medium">{{ zone.name }}</span>
                             {% if '_parcours' in zone.name %}
-                            <button data-zone-name="{{ zone.name }}" class="start-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Lancer</button>
+                                <span class="bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full">Parcours</span>
                             {% else %}
-                            <button data-zone-name="{{ zone.name }}" class="generate-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-full shadow-md transition transform hover:scale-105">Générer Parcours</button>
+                                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">Périmètre</span>
                             {% endif %}
                         </div>
-                    </li>
-                    {% endfor %}
-                </ul>
+                        
+                        <!-- Boutons d'action -->
+                        <div class="flex flex-wrap space-x-2">
+                            <a href="/view_zone?name={{ zone.name }}" 
+                               class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg shadow-md transition transform hover:scale-105">
+                                Visualiser
+                            </a>
+                            
+                            {% if '_parcours' in zone.name %}
+                                <button data-zone-name="{{ zone.name }}" 
+                                        class="start-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg shadow-md transition transform hover:scale-105">
+                                    Lancer
+                                </button>
+                            {% else %}
+                                <button data-zone-name="{{ zone.name }}" 
+                                        class="generate-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg shadow-md transition transform hover:scale-105">
+                                    Parcours Simple
+                                </button>
+                                <button data-zone-name="{{ zone.name }}" 
+                                        class="generate-advanced-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-3 rounded-lg shadow-md transition transform hover:scale-105">
+                                    Parcours Avancé
+                                </button>
+                            {% endif %}
+                            
+                            <!-- Bouton supprimer individuel -->
+                            <button data-zone-id="{{ zone.id }}" data-zone-name="{{ zone.name }}"
+                                    class="delete-single-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg shadow-md transition transform hover:scale-105">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
             {% else %}
-                <p class="text-center text-gray-500 py-8">Aucune zone enregistrée.</p>
+                <div class="text-center py-12">
+                    <div class="text-gray-400 text-6xl mb-4">🏞️</div>
+                    <p class="text-gray-500 text-xl mb-4">Aucune zone enregistrée</p>
+                    <p class="text-gray-400">Créez votre première zone depuis le panneau de contrôle</p>
+                </div>
             {% endif %}
         </div>
-         <div class="mt-8 text-center"><a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold">&larr; Retour au contrôle</a></div>
+         
+        <div class="mt-8 text-center">
+            <a href="/" class="text-indigo-600 hover:text-indigo-800 font-semibold text-lg">
+                ← Retour au contrôle
+            </a>
+        </div>
     </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // Variables globales
+        let selectedZones = new Set();
+        const selectedCountEl = document.getElementById('selected-count');
+        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        
+        // Mise à jour de l'affichage de sélection
+        function updateSelectionUI() {
+            selectedCountEl.textContent = selectedZones.size;
+            
+            if (selectedZones.size > 0) {
+                deleteSelectedBtn.style.display = 'block';
+                selectAllBtn.textContent = 'Tout désélectionner';
+            } else {
+                deleteSelectedBtn.style.display = 'none';
+                selectAllBtn.textContent = 'Tout sélectionner';
+            }
+            
+            // Mettre à jour l'apparence des cartes
+            document.querySelectorAll('.zone-card').forEach(card => {
+                const zoneId = parseInt(card.dataset.zoneId);
+                if (selectedZones.has(zoneId)) {
+                    card.classList.add('zone-selected');
+                } else {
+                    card.classList.remove('zone-selected');
+                }
+            });
+        }
+        
+        // Gestion des checkboxes individuelles
+        document.querySelectorAll('.zone-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const zoneId = parseInt(e.target.dataset.zoneId);
+                
+                if (e.target.checked) {
+                    selectedZones.add(zoneId);
+                } else {
+                    selectedZones.delete(zoneId);
+                }
+                
+                updateSelectionUI();
+            });
+        });
+        
+        // Bouton "Tout sélectionner / Tout désélectionner"
+        selectAllBtn.addEventListener('click', () => {
+            const checkboxes = document.querySelectorAll('.zone-checkbox');
+            
+            if (selectedZones.size === checkboxes.length) {
+                // Tout désélectionner
+                selectedZones.clear();
+                checkboxes.forEach(cb => cb.checked = false);
+            } else {
+                // Tout sélectionner
+                selectedZones.clear();
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    selectedZones.add(parseInt(cb.dataset.zoneId));
+                });
+            }
+            
+            updateSelectionUI();
+        });
+        
+        // Supprimer les zones sélectionnées
+        deleteSelectedBtn.addEventListener('click', async () => {
+            const selectedArray = Array.from(selectedZones);
+            const confirmMsg = `Voulez-vous vraiment supprimer ${selectedArray.length} zone(s) sélectionnée(s) ?\n\nCette action est irréversible.`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            try {
+                deleteSelectedBtn.textContent = 'Suppression...';
+                deleteSelectedBtn.disabled = true;
+                
+                const response = await fetch('/api/delete_zones', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ zone_ids: selectedArray })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`${data.message}\n${data.details.deleted.length} zone(s) supprimée(s)`);
+                    window.location.reload();
+                } else {
+                    alert(`Erreur: ${data.message}`);
+                }
+            } catch (error) {
+                alert('Erreur de communication avec le serveur.');
+            } finally {
+                deleteSelectedBtn.textContent = 'Supprimer sélection';
+                deleteSelectedBtn.disabled = false;
+            }
+        });
+        
+        // Supprimer toutes les zones
+        document.getElementById('delete-all-btn').addEventListener('click', async () => {
+            const totalZones = document.querySelectorAll('.zone-card').length;
+            
+            if (totalZones === 0) {
+                alert('Aucune zone à supprimer.');
+                return;
+            }
+            
+            const confirmMsg = `⚠️ ATTENTION ⚠️\n\nVoulez-vous vraiment supprimer TOUTES les ${totalZones} zones ?\n\nCette action supprimera :\n• Tous les périmètres enregistrés\n• Tous les parcours générés\n• Tout l'historique de tonte\n\nCette action est IRRÉVERSIBLE !`;
+            
+            if (!confirm(confirmMsg)) return;
+            
+            // Double confirmation pour cette action critique
+            if (!confirm('Êtes-vous absolument certain(e) ? Cette action ne peut pas être annulée.')) return;
+            
+            try {
+                const deleteAllBtn = document.getElementById('delete-all-btn');
+                deleteAllBtn.textContent = 'Suppression...';
+                deleteAllBtn.disabled = true;
+                
+                const response = await fetch('/api/delete_all_zones', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: true })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`${data.message}\n\nStatistiques:\n• ${data.statistics.zones_deleted} zones supprimées\n• ${data.statistics.history_deleted} entrées d'historique supprimées`);
+                    window.location.reload();
+                } else {
+                    alert(`Erreur: ${data.message}`);
+                }
+            } catch (error) {
+                alert('Erreur de communication avec le serveur.');
+            } finally {
+                const deleteAllBtn = document.getElementById('delete-all-btn');
+                deleteAllBtn.textContent = 'Tout supprimer';
+                deleteAllBtn.disabled = false;
+            }
+        });
+        
+        // Suppression individuelle
+        document.querySelectorAll('.delete-single-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const zoneId = parseInt(button.dataset.zoneId);
+                const zoneName = button.dataset.zoneName;
+                
+                if (!confirm(`Supprimer définitivement la zone "${zoneName}" ?\n\nCette action est irréversible.`)) return;
+                
+                try {
+                    button.textContent = '⏳';
+                    button.disabled = true;
+                    
+                    const response = await fetch(`/api/delete_zone/${zoneId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        alert(data.message);
+                        window.location.reload();
+                    } else {
+                        alert(`Erreur: ${data.message}`);
+                    }
+                } catch (error) {
+                    alert('Erreur de communication avec le serveur.');
+                } finally {
+                    button.textContent = '🗑️';
+                    button.disabled = false;
+                }
+            });
+        });
+        
+        // LOGIQUE EXISTANTE (inchangée)
+        
         // Logique pour le bouton "Lancer"
         document.querySelectorAll('.start-btn').forEach(button => {
             button.addEventListener('click', async () => {
@@ -51,7 +303,6 @@
                         const response = await fetch(`/api/start_zone/${zoneName}`, { method: 'POST' });
                         const data = await response.json();
                         if (response.ok) {
-                            // REDIRECTION AUTOMATIQUE
                             window.location.href = `/supervision`;
                         } else {
                             alert(`Erreur: ${data.message}`);
@@ -87,7 +338,54 @@
                 }
             });
         });
+
+        // Logique pour le bouton "Parcours Avancé"
+        document.querySelectorAll('.generate-advanced-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const zoneName = button.dataset.zoneName;
+                
+                const width = prompt(`Largeur de coupe du robot en cm pour "${zoneName}":`, "20");
+                if (!width || isNaN(parseFloat(width))) {
+                    if (width !== null) alert("Veuillez entrer une valeur numérique valide.");
+                    return;
+                }
+                
+                const concentricPasses = prompt(`Nombre de passes concentriques après le périmètre (2-5 recommandé):`, "3");
+                if (!concentricPasses || isNaN(parseInt(concentricPasses)) || parseInt(concentricPasses) < 1) {
+                    if (concentricPasses !== null) alert("Veuillez entrer un nombre entier positif.");
+                    return;
+                }
+                
+                if (confirm(`Générer parcours avancé:\n- Périmètre\n- ${concentricPasses} passes concentriques\n- Tonte parallèle du centre\n\nContinuer ?`)) {
+                    try {
+                        button.textContent = 'Génération...';
+                        button.disabled = true;
+                        
+                        const response = await fetch(`/api/generate_advanced_path/${zoneName}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                width: parseFloat(width),
+                                concentric_passes: parseInt(concentricPasses)
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        alert(data.message + (data.details ? '\n\n' + data.details : ''));
+                        
+                        if (response.ok) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        alert('Erreur de communication avec le serveur.');
+                    } finally {
+                        button.textContent = 'Parcours Avancé';
+                        button.disabled = false;
+                    }
+                }
+            });
+        });    
     });
-</script>
+    </script>
 </body>
 </html>
