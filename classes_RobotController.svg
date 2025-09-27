@@ -12,15 +12,19 @@
 <!-- database_manager.DatabaseManager -->
 <g id="node1" class="node">
 <title>database_manager.DatabaseManager</title>
-<polygon fill="none" stroke="black" points="0,-135.5 0,-249.5 720,-249.5 720,-135.5 0,-135.5"/>
-<text text-anchor="start" x="294.5" y="-234.3" font-family="Times,serif" font-size="14.00">DatabaseManager</text>
-<polyline fill="none" stroke="black" points="0,-226.5 720,-226.5 "/>
-<text text-anchor="start" x="311" y="-211.3" font-family="Times,serif" font-size="14.00">db_name : str</text>
-<polyline fill="none" stroke="black" points="0,-203.5 720,-203.5 "/>
-<text text-anchor="start" x="8" y="-188.3" font-family="Times,serif" font-size="14.00">get_all_zones()</text>
-<text text-anchor="start" x="8" y="-173.3" font-family="Times,serif" font-size="14.00">get_zone_by_name(name)</text>
-<text text-anchor="start" x="8" y="-158.3" font-family="Times,serif" font-size="14.00">save_mowing_history(zone_id, routes, duration_minutes, energy_used_wh, obstacles_encountered)</text>
-<text text-anchor="start" x="8" y="-143.3" font-family="Times,serif" font-size="14.00">save_zone(name, perimeter_vectors)</text>
+<polygon fill="none" stroke="black" points="0,-105.5 0,-279.5 720,-279.5 720,-105.5 0,-105.5"/>
+<text text-anchor="start" x="294.5" y="-264.3" font-family="Times,serif" font-size="14.00">DatabaseManager</text>
+<polyline fill="none" stroke="black" points="0,-256.5 720,-256.5 "/>
+<text text-anchor="start" x="311" y="-241.3" font-family="Times,serif" font-size="14.00">db_name : str</text>
+<polyline fill="none" stroke="black" points="0,-233.5 720,-233.5 "/>
+<text text-anchor="start" x="8" y="-218.3" font-family="Times,serif" font-size="14.00">delete_all_zones()</text>
+<text text-anchor="start" x="8" y="-203.3" font-family="Times,serif" font-size="14.00">delete_zone(zone_id)</text>
+<text text-anchor="start" x="8" y="-188.3" font-family="Times,serif" font-size="14.00">delete_zones_by_ids(zone_ids)</text>
+<text text-anchor="start" x="8" y="-173.3" font-family="Times,serif" font-size="14.00">get_all_zones()</text>
+<text text-anchor="start" x="8" y="-158.3" font-family="Times,serif" font-size="14.00">get_zone_by_name(name)</text>
+<text text-anchor="start" x="8" y="-143.3" font-family="Times,serif" font-size="14.00">get_zone_id_by_name(name)</text>
+<text text-anchor="start" x="8" y="-128.3" font-family="Times,serif" font-size="14.00">save_mowing_history(zone_id, routes, duration_minutes, energy_used_wh, obstacles_encountered)</text>
+<text text-anchor="start" x="8" y="-113.3" font-family="Times,serif" font-size="14.00">save_zone(name, perimeter_vectors)</text>
 </g>
 <!-- lidar_ld06_manager.LD06LidarManager -->
 <g id="node2" class="node">

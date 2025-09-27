@@ -2,7 +2,7 @@
 import pigpio, time, atexit, sys, math, serial, threading
 import numpy as np
 from flask import Flask, request, jsonify, render_template
-from robot_controller_class import RobotController
+from robot_controller_class impor
 from database_manager import DatabaseManager
 
 # Ajoutez ces lignes tout au début, après les imports système
@@ -47,6 +47,9 @@ motor_droit_pins = { 'dir_pin': 16, 'step_pin': 13, 'en_pin': 21 }
 # Initialisation USB (optionnelle)
 try:
     ser = serial.Serial('/dev/ttyUSB0', 115200)
+    while True:
+    ligne = ser.readline().decode().strip()
+    print("Valeur reçue :", ligne)
 except Exception as e:
     print(f"Pas de liaison ttyUSB0 disponible: {e}")
     ser = None
@@ -724,7 +727,7 @@ def calculateRealPositionFromVectors(vectors):
     
     return final_position
 
-# --- Routes API ---
+# --- Routes API ---------------------------------------------------------------------------------
 
     # FONCTION DE TEST - À ajouter temporairement
 @app.route('/api/test_position_calculation', methods=['POST'])

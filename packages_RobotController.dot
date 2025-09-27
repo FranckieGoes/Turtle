@@ -6,10 +6,8 @@ charset="utf-8"
 "esp32_connect_test" [color="black", label=<esp32_connect_test>, shape="box", style="solid"];
 "lidar_ld06_manager" [color="black", label=<lidar_ld06_manager>, shape="box", style="solid"];
 "robot_controller_class" [color="black", label=<robot_controller_class>, shape="box", style="solid"];
-"server_for_robot" [color="black", label=<server_for_robot>, shape="box", style="solid"];
 "stepper_motor_class" [color="black", label=<stepper_motor_class>, shape="box", style="solid"];
+"test_parcours_avance" [color="black", label=<test_parcours_avance>, shape="box", style="solid"];
 "robot_controller_class" -> "SpeedConverter" [arrowhead="open", arrowtail="none"];
 "robot_controller_class" -> "stepper_motor_class" [arrowhead="open", arrowtail="none"];
-"server_for_robot" -> "database_manager" [arrowhead="open", arrowtail="none"];
-"server_for_robot" -> "robot_controller_class" [arrowhead="open", arrowtail="none"];
 }
